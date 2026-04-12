@@ -1,0 +1,3115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STOCK ANALYZER</title>
+  <meta name="theme-color" content="#0e0e12" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f2f2f4" media="(prefers-color-scheme: light)">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { DEFAULT: '#d5001c', light: '#ff1a3a', dark: '#a30015' },
+          },
+          fontFamily: {
+            sans: ['"Inter"', '"Noto Sans JP"', 'system-ui', 'sans-serif'],
+            display: ['"Barlow Condensed"', '"Arial Narrow"', 'Arial', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js" defer></script>
+  <style>
+
+    html { color-scheme: dark; }
+    [data-theme="light"] { color-scheme: light; }
+
+    :root {
+      /* Porsche dark palette */
+      --bg-0: #0e0e12; --bg-1: #14141a; --bg-2: #1c1c24; --bg-3: #24242e;
+      --text: #f0f0f2; --text-s: rgba(240,240,242,0.78); --text-m: rgba(240,240,242,0.55); --text-d: rgba(240,240,242,0.40);
+      --border: rgba(255,255,255,0.04); --border-s: rgba(255,255,255,0.09); --border-m: rgba(255,255,255,0.14);
+      --card-hover-bg: #1c1c24; --card-hover-shadow: rgba(0,0,0,0.55);
+      --upload-border: rgba(255,255,255,0.12); --upload-hover-bg: rgba(213,0,28,0.04);
+      --scrollbar-track: #14141a; --scrollbar-thumb: #2a2a36;
+      --chart-text: rgba(240,240,242,0.28); --chart-grid: rgba(255,255,255,0.03); --chart-grid-y: rgba(255,255,255,0.025);
+      --metric-bar-bg: #24242e;
+      --input-bg: #1c1c24;
+      /* Porsche spacing tokens */
+      --space-xs: clamp(4px, .25vw + 3px, 8px);
+      --space-sm: clamp(8px, .5vw + 6px, 16px);
+      --space-md: clamp(16px, 1.25vw + 12px, 36px);
+      --space-lg: clamp(32px, 2.75vw + 23px, 76px);
+      /* Porsche easing */
+      --ease-base: cubic-bezier(.25,.1,.25,1);
+      --ease-out: cubic-bezier(.4,0,.5,1);
+      --ease-luxury: cubic-bezier(.22,1,.36,1);
+    }
+    [data-theme="light"] {
+      --bg-0: #f2f2f4; --bg-1: #ffffff; --bg-2: #ebebef; --bg-3: #e0e0e6;
+      --text: #0e0e12; --text-s: rgba(14,14,18,0.78); --text-m: rgba(14,14,18,0.58); --text-d: rgba(14,14,18,0.42);
+      --border: rgba(0,0,0,0.05); --border-s: rgba(0,0,0,0.09); --border-m: rgba(0,0,0,0.14);
+      --card-hover-bg: #ffffff; --card-hover-shadow: rgba(0,0,0,0.07);
+      --upload-border: rgba(0,0,0,0.14); --upload-hover-bg: rgba(213,0,28,0.03);
+      --scrollbar-track: #e8e8ec; --scrollbar-thumb: #c8c8d0;
+      --chart-text: rgba(14,14,18,0.45); --chart-grid: rgba(0,0,0,0.05); --chart-grid-y: rgba(0,0,0,0.04);
+      --metric-bar-bg: #dcdce4;
+      --input-bg: #ebebef;
+    }
+
+    * { letter-spacing: 0.02em; }
+    body { background: var(--bg-0); color: var(--text); font-feature-settings: "kern","liga","ss01"; }
+
+    /* ── PC可読性向上: デスクトップ(≥1024px)でフォントを1-2px大きく ─────── */
+    @media (min-width: 1024px) {
+      .text-\[10px\] { font-size: 11px !important; }
+      .text-\[11px\] { font-size: 13px !important; }
+      .text-xs       { font-size: 13px !important; }
+      .text-sm       { font-size: 15px !important; }
+      .text-base     { font-size: 17px !important; }
+    }
+    button, a, [role="button"], label[for], input[type="file"] + label { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+
+    /* Porsche scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+    ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 0; }
+
+    /* Hide scrollbar for tab nav */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Grade colors */
+    .grade-excellent { color: #22c55e; }
+    .grade-good { color: #3b82f6; }
+    .grade-warning { color: #f59e0b; }
+    .grade-danger { color: #ef4444; }
+    .grade-na { color: #6b7280; }
+
+    /* Verdict cards */
+    .verdict-buy  { background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); color: #d1fae5; border: 1px solid rgba(34,197,94,0.2); }
+    .verdict-hold { background: linear-gradient(135deg, #451a03 0%, #78350f 100%); color: #fef3c7; border: 1px solid rgba(245,158,11,0.2); }
+    .verdict-sell { background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%); color: #fee2e2; border: 1px solid rgba(239,68,68,0.2); }
+
+    /* Animations — Porsche timing */
+    @keyframes fadeUp   { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes slideIn  { from { opacity:0; transform:translateX(-16px); } to { opacity:1; transform:translateX(0); } }
+    @keyframes pulse-glow { 0%,100% { box-shadow:0 0 24px rgba(213,0,28,.12); } 50% { box-shadow:0 0 48px rgba(213,0,28,.24); } }
+    .fade-up  { animation: fadeUp  0.7s var(--ease-luxury) forwards; }
+    .slide-in { animation: slideIn 0.45s var(--ease-out)   forwards; }
+
+    /* Cards */
+    .card-hover { transition: transform 0.4s var(--ease-base), background 0.3s var(--ease-base), box-shadow 0.4s var(--ease-base); }
+    .card-hover:hover { transform: scale3d(1.015,1.015,1); background: var(--card-hover-bg); box-shadow: 0 24px 64px var(--card-hover-shadow); }
+
+    /* Upload zone — Porsche architectural style */
+    .upload-zone { border: 1px solid var(--upload-border); transition: border-color 0.5s var(--ease-base), background 0.5s var(--ease-base), box-shadow 0.5s var(--ease-base); touch-action: manipulation; }
+    .upload-zone:hover  { border-color: #d5001c; background: var(--upload-hover-bg); box-shadow: 0 0 0 1px rgba(213,0,28,.15), 0 8px 40px rgba(213,0,28,.06); }
+    .upload-zone.dragover { border-color: #d5001c; background: rgba(213,0,28,.05); box-shadow: 0 0 0 2px rgba(213,0,28,.3); }
+
+    /* Tabs — Porsche thin-line style */
+    .tab-active { color: var(--text) !important; border-color: #d5001c !important; }
+
+    /* Divider */
+    .divider { height: 1px; background: linear-gradient(90deg, transparent, var(--border-m), transparent); }
+
+    canvas { max-height: 280px; }
+    .glow-red { animation: pulse-glow 4s var(--ease-base) infinite; }
+
+    /* Metric bar */
+    .metric-bar      { height: 2px; background: var(--metric-bar-bg); overflow: hidden; }
+    .metric-bar-fill { height: 100%; transition: width 1.2s var(--ease-luxury); }
+
+    /* Theme utility classes */
+    .th-bg-0 { background: var(--bg-0); }
+    .th-bg-1 { background: var(--bg-1); }
+    .th-bg-2 { background: var(--bg-2); }
+    .th-text   { color: var(--text); }
+    .th-text-s { color: var(--text-s); }
+    .th-text-m { color: var(--text-m); }
+    .th-text-d { color: var(--text-d); }
+    .th-border   { border-color: var(--border); }
+    .th-border-s { border-color: var(--border-s); }
+    .th-border-m { border-color: var(--border-m); }
+    .th-input  { background: var(--input-bg); border-color: var(--border-s); color: var(--text); }
+    .th-header { background: color-mix(in srgb, var(--bg-0) 88%, transparent); }
+
+    /* Porsche-style header line */
+    header { border-bottom-color: var(--border) !important; }
+
+    /* Theme toggle */
+    .theme-toggle { position:relative; width:44px; height:24px; border-radius:0; background:var(--bg-3); border:1px solid var(--border-s); cursor:pointer; transition:background 0.3s var(--ease-base), border-color 0.3s var(--ease-base); touch-action: manipulation; }
+    .theme-toggle::after { content:''; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:0; background:var(--text); transition:left 0.3s var(--ease-base), background 0.3s var(--ease-base); }
+    [data-theme="light"] .theme-toggle::after { left:23px; }
+    .theme-toggle-icon { position:absolute; top:50%; transform:translateY(-50%); font-size:11px; line-height:1; }
+    .theme-toggle-icon.moon { left:5px; }
+    .theme-toggle-icon.sun  { right:4px; }
+
+    /* Porsche typography — Barlow Condensed for headings */
+    h1, h2, h3, h4, .font-display { font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif; letter-spacing: 0.04em; }
+    h1, h2 { text-wrap: balance; }
+
+    /* Chart Modal — Porsche sharp corners */
+    .chart-modal-overlay { position:fixed; inset:0; z-index:100; background:rgba(14,14,18,0.82); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; opacity:0 !important; pointer-events:none !important; transition:opacity 0.35s var(--ease-base); }
+    .chart-modal-overlay.active { opacity:1 !important; pointer-events:auto !important; }
+    .chart-modal { background:var(--bg-1); border:1px solid var(--border-s); border-radius:0; padding:2.5rem; width:90%; max-width:720px; max-height:80vh; overflow-y:auto; overscroll-behavior:contain; transform:scale(0.96) translateY(8px); transition:transform 0.4s var(--ease-luxury); }
+    .chart-modal-overlay.active .chart-modal { transform:scale(1) translateY(0); }
+    .clickable-card { cursor:pointer; }
+    .clickable-card:hover { border-color:var(--border-m) !important; }
+
+    /* Drag & Drop */
+    .sortable-item { cursor:grab; user-select:none; }
+    .sortable-item:active { cursor:grabbing; }
+    .sortable-item.dragging { opacity:0.35; transform:scale(0.985); }
+    .sortable-item.drag-over { border-top:1px solid #d5001c !important; margin-top:-1px; }
+    .sortable-ghost { position:relative; }
+    .sortable-ghost::before { content:''; position:absolute; left:0; right:0; top:-1px; height:1px; background:#d5001c; }
+
+    /* Porsche-style button base */
+    .btn-porsche {
+      font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 600;
+      border-radius: 0;
+      transition: background-color 0.3s var(--ease-base), border-color 0.3s var(--ease-base), color 0.3s var(--ease-base), box-shadow 0.3s var(--ease-base);
+      touch-action: manipulation;
+    }
+
+    /* Focus rings — Porsche red accent */
+    input:focus-visible, select:focus-visible { outline: none; border-color: #d5001c !important; box-shadow: 0 0 0 1px rgba(213,0,28,.2); }
+    button:focus-visible, [role="button"]:focus-visible, .tab-btn:focus-visible { outline: 2px solid #d5001c; outline-offset: 2px; }
+
+    /* Porsche score card accent line */
+    .score-card-accent { position: relative; overflow: hidden; }
+    .score-card-accent::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:#d5001c; transform:scaleX(0); transform-origin:left; transition:transform 0.4s var(--ease-luxury); }
+    .score-card-accent:hover::before { transform:scaleX(1); }
+
+    /* Investor Profile Cards */
+    .profile-card {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 0.75rem 0.5rem; border: 1px solid var(--border-s);
+      background: var(--card-bg); cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      font-family: 'Barlow Condensed','Arial Narrow',Arial,sans-serif;
+      border-radius: 0;
+    }
+    .profile-card:hover { border-color: var(--border-m); background: var(--card-hover-bg); }
+    .profile-card.selected { border-color: #d5001c; background: rgba(213,0,28,0.06); }
+    .profile-card .profile-icon { width: 20px; height: 20px; opacity: 0.7; transition: opacity 0.2s; }
+    .profile-card.selected .profile-icon { opacity: 1; color: #d5001c; }
+    .profile-card .profile-icon svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+    .profile-card .profile-name { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-primary); }
+    .profile-card .profile-sub { font-size: 0.65rem; letter-spacing: 0.08em; color: var(--text-muted, #888); }
+
+    /* Hero background image — upload page only, semi-transparent */
+    .hero-bg {
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-bg::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1920&q=80') center/cover no-repeat;
+      opacity: 0.18;
+      transition: opacity 1.2s var(--ease-base);
+    }
+    .hero-bg > * { position: relative; z-index: 1; }
+
+    /* Dashboard hero image strip */
+    .dashboard-hero-img {
+      position: relative;
+      overflow: hidden;
+    }
+    .dashboard-hero-img::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background: url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=1400&q=80') center/cover no-repeat;
+    }
+    .dashboard-hero-img > * { position: relative; z-index: 2; }
+    /* Light mode: overlay between image and content to ensure text readability */
+    [data-theme="light"] .dashboard-hero-img::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(242,242,244,0.88);
+      z-index: 1;
+    }
+
+    /* Section image strip */
+    .section-img-strip {
+      height: 120px;
+      position: relative;
+      overflow: hidden;
+      margin: 2rem 0;
+    }
+    .section-img-strip img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Score card thumbnail */
+    .score-card-img {
+      width: 100%;
+      height: 48px;
+      object-fit: cover;
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    /* Responsive background images */
+    @media (max-width: 768px) {
+      .hero-bg::before {
+        background-image: url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&q=75');
+      }
+      .dashboard-hero-img::after {
+        background-image: url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&q=75');
+      }
+      .section-img-strip { height: 80px; margin: 1rem 0; }
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased">
+  <a href="#mainContent" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[999] focus:bg-brand focus:text-white focus:px-4 focus:py-2 focus:text-sm">Skip to main content</a>
+
+  <!-- Chart Modal -->
+  <div id="chartModal" class="chart-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="chartModalTitle">
+    <div class="chart-modal">
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="chartModalTitle" class="text-sm font-bold th-text-s"></h3>
+        <button id="chartModalClose" class="th-text-m hover:th-text text-lg leading-none" aria-label="Close chart">&times;</button>
+      </div>
+      <canvas id="chartModalCanvas" role="img" aria-label="Enlarged chart view"></canvas>
+    </div>
+  </div>
+
+  <!-- Evaluation Criteria Modal -->
+  <div id="criteriaModal" class="chart-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="criteriaTitle" onclick="closeModal('criteriaModal')">
+    <div class="chart-modal" style="max-width:500px" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="criteriaTitle" class="text-sm font-bold th-text-s"></h3>
+        <button class="th-text-m hover:th-text text-lg leading-none" aria-label="Close evaluation criteria" onclick="closeModal('criteriaModal')">&times;</button>
+      </div>
+      <div id="criteriaContent" class="text-sm th-text-s"></div>
+    </div>
+  </div>
+
+  <!-- Async status announcer for screen readers -->
+  <div id="srAnnouncer" role="status" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+
+  <!-- Header — Porsche style -->
+  <header class="fixed top-0 w-full z-50 th-header backdrop-blur-xl border-b" style="border-color:var(--border)">
+    <div class="max-w-[1400px] mx-auto px-4 sm:px-8 h-[72px] flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <!-- Porsche-style wordmark -->
+        <div class="w-7 h-7 bg-brand flex items-center justify-center flex-shrink-0" style="clip-path:polygon(0 0,100% 0,100% 75%,50% 100%,0 75%)">
+          <svg class="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 3h2v-2h2v2h2v2h-2v2h-2v-2h-2v-2z"/>
+          </svg>
+        </div>
+        <div>
+          <span class="block text-[13px] font-bold tracking-[0.22em] uppercase" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" data-i18n="Stock Analyzer">Stock Analyzer</span>
+          <span class="block text-[9px] tracking-[0.18em] uppercase" style="color:var(--text-m)" data-i18n="Financial Intelligence">Financial Intelligence</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="langToggle" class="text-[10px] font-semibold tracking-[0.14em] uppercase px-3 py-1.5 border hover:border-brand hover:text-brand transition-all duration-300" style="border-color:var(--border-s);border-radius:0" title="Toggle language" aria-label="Toggle language between English and Japanese">EN / JA</button>
+        <button id="themeToggle" class="theme-toggle" title="Toggle theme" aria-label="Toggle dark and light theme" aria-pressed="false">
+          <span class="theme-toggle-icon moon" aria-hidden="true">🌙</span>
+          <span class="theme-toggle-icon sun" aria-hidden="true">☀️</span>
+        </button>
+        <button id="btnExport" class="hidden text-[10px] font-semibold tracking-[0.14em] uppercase px-5 py-2 border hover:border-brand hover:text-brand transition-all duration-300" style="border-color:var(--border-s);border-radius:0">
+          <span data-i18n="Export">Export</span>
+        </button>
+        <button id="btnReset" class="hidden text-[10px] font-semibold tracking-[0.14em] uppercase px-5 py-2 border hover:border-brand hover:text-brand transition-all duration-300" style="border-color:var(--border-s);border-radius:0">
+          <span data-i18n="New Analysis">New Analysis</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="mainContent">
+  <!-- Upload Section — Porsche style with hero background -->
+  <section id="uploadSection" class="hero-bg pt-[72px] min-h-screen flex items-center justify-center px-4 sm:px-8">
+    <div class="max-w-lg w-full fade-up">
+      <!-- Porsche-style eyebrow + heading -->
+      <div class="text-center mb-14">
+        <p class="text-[10px] font-semibold tracking-[0.28em] uppercase mb-4" style="color:#d5001c;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">Financial Intelligence</p>
+        <h1 class="text-[clamp(2.8rem,5vw,4.5rem)] font-bold leading-none tracking-[0.04em] uppercase mb-4" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" data-i18n="Financial Analysis">Financial Analysis</h1>
+        <div class="w-8 h-px bg-brand mx-auto mb-4"></div>
+        <p class="th-text-m text-xs tracking-[0.12em] uppercase" data-i18n="Upload your financial data to generate a comprehensive investment analysis">Upload your financial data to generate a comprehensive investment analysis</p>
+      </div>
+
+      <!-- Ticker Quick Search -->
+      <div class="mb-6">
+        <label for="tickerInput" class="sr-only">Ticker symbol</label>
+        <div class="flex gap-2 items-stretch">
+          <div class="relative flex-1">
+            <input type="text" id="tickerInput" placeholder="7203.T / AAPL…" autocomplete="off" spellcheck="false" aria-label="Ticker symbol (e.g. 7203.T or AAPL)" class="w-full px-4 py-3.5 th-input text-sm tracking-wider focus:border-brand focus:outline-none transition pr-8" style="border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">
+            <span class="absolute right-3 top-1/2 -translate-y-1/2 th-text-m text-[10px] tracking-wider pointer-events-none" aria-hidden="true">TICKER</span>
+          </div>
+          <button id="btnTickerFetch" class="px-6 bg-brand hover:bg-brand-light text-white font-semibold text-xs uppercase tracking-[0.18em] transition-all duration-300" style="border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">
+            <span id="btnTickerText" data-i18n="Fetch & Analyze">Fetch &amp; Analyze</span>
+            <svg id="btnTickerSpinner" class="hidden animate-spin inline w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+          </button>
+        </div>
+        <p id="tickerError" class="hidden mt-2 text-xs text-red-500 tracking-wider" role="alert" aria-live="assertive"></p>
+      </div>
+
+      <div class="flex items-center gap-4 mb-6">
+        <div class="flex-1 h-px" style="background:var(--border-m)"></div>
+        <span class="text-[10px] th-text-m tracking-[0.2em] uppercase" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" data-i18n="or upload file">or upload file</span>
+        <div class="flex-1 h-px" style="background:var(--border-m)"></div>
+      </div>
+
+      <div id="dropZone" class="upload-zone p-6 sm:p-14 text-center cursor-pointer mb-8" style="border-radius:0" role="button" tabindex="0" aria-label="Drop file here or click to browse for Excel or JSON file">
+        <div class="w-14 h-14 mx-auto mb-5 border flex items-center justify-center" style="border-color:var(--border-s);border-radius:0">
+          <svg class="w-6 h-6 th-text-m" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+          </svg>
+        </div>
+        <p class="th-text-s font-medium text-xs tracking-[0.1em] uppercase mb-1" data-i18n="Drop file here or click to browse">Drop file here or click to browse</p>
+        <p class="th-text-m text-[10px] tracking-wider" data-i18n="Excel (.xlsx) or JSON supported">Excel (.xlsx) or JSON supported</p>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.json" class="hidden">
+        <p id="fileName" class="mt-4 text-xs text-brand font-semibold tracking-wider hidden"></p>
+      </div>
+
+      <div id="metaForm" class="hidden space-y-4 mb-8">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label for="inputCompany" class="block text-[10px] font-medium th-text-m uppercase tracking-wider mb-1.5" data-i18n="Company">Company</label>
+            <input type="text" id="inputCompany" placeholder="MODEC Inc.…" autocomplete="organization" class="w-full px-3 py-2.5 th-input rounded-lg text-sm focus:border-brand focus:outline-none transition">
+          </div>
+          <div>
+            <label for="inputTicker" class="block text-[10px] font-medium th-text-m uppercase tracking-wider mb-1.5" data-i18n="Ticker">Ticker</label>
+            <input type="text" id="inputTicker" placeholder="6269…" autocomplete="off" spellcheck="false" class="w-full px-3 py-2.5 th-input rounded-lg text-sm focus:border-brand focus:outline-none transition">
+          </div>
+          <div>
+            <label for="inputIndustry" class="block text-[10px] font-medium th-text-m uppercase tracking-wider mb-1.5" data-i18n="Industry">Industry</label>
+            <div class="flex gap-2">
+              <select id="inputIndustry" class="flex-1 px-3 py-2.5 th-input rounded-lg text-sm focus:border-brand focus:outline-none transition">
+                <option value="">Loading...</option>
+              </select>
+              <button id="regionToggle" type="button" onclick="toggleRegion()" class="px-3 py-2.5 rounded-lg text-sm font-medium th-input border whitespace-nowrap" style="border-color:var(--border);min-width:52px" aria-label="Toggle region between global and Japan"><span aria-hidden="true">🌐</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label for="inputCurrency" class="block text-[10px] font-medium th-text-m uppercase tracking-wider mb-1.5" data-i18n="Currency">Currency</label>
+            <select id="inputCurrency" class="w-full px-3 py-2.5 th-input rounded-lg text-sm focus:border-brand focus:outline-none transition">
+              <option value="JPY" data-ja="¥ JPY — 日本円" data-en="¥ JPY — Japanese Yen">¥ JPY — 日本円</option>
+              <option value="USD" data-ja="$ USD — 米ドル" data-en="$ USD — US Dollar">$ USD — 米ドル</option>
+              <option value="EUR" data-ja="€ EUR — ユーロ" data-en="€ EUR — Euro">€ EUR — ユーロ</option>
+              <option value="GBP" data-ja="£ GBP — 英ポンド" data-en="£ GBP — British Pound">£ GBP — 英ポンド</option>
+              <option value="HKD" data-ja="HK$ HKD — 香港ドル" data-en="HK$ HKD — Hong Kong Dollar">HK$ HKD — 香港ドル</option>
+              <option value="KRW" data-ja="₩ KRW — 韓国ウォン" data-en="₩ KRW — Korean Won">₩ KRW — 韓国ウォン</option>
+              <option value="AUD" data-ja="A$ AUD — 豪ドル" data-en="A$ AUD — Australian Dollar">A$ AUD — 豪ドル</option>
+              <option value="CAD" data-ja="C$ CAD — カナダドル" data-en="C$ CAD — Canadian Dollar">C$ CAD — カナダドル</option>
+              <option value="CNY" data-ja="¥ CNY — 人民元" data-en="¥ CNY — Chinese Yuan">¥ CNY — 人民元</option>
+              <option value="SGD" data-ja="S$ SGD — シンガポールドル" data-en="S$ SGD — Singapore Dollar">S$ SGD — シンガポールドル</option>
+            </select>
+          </div>
+          <div class="sm:col-span-2 flex items-end">
+            <p class="text-[10px] th-text-m tracking-wider" data-i18n="currency-hint">Excelファイルの財務データの通貨を選択してください。ティッカー取得時は自動判定されます。</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label for="inputD1" class="block text-[10px] font-medium th-text-m uppercase tracking-wider mb-1.5" data-i18n="Management">Management</label>
+            <select id="inputD1" class="w-full px-3 py-2.5 th-input rounded-lg text-sm focus:border-brand focus:outline-none transition">
+              <option value="○" data-i18n="No Issues">No Issues</option><option value="▲" data-i18n="Monitor">Monitor</option><option value="×" data-i18n="Risk">Risk</option>
+            </select>
+          </div>
+          <div>
+            <label for="inputD2" class="block text-[10px] font-medium th-text-m uppercase tracking-wider mb-1.5" data-i18n="Ownership">Ownership</label>
+            <select id="inputD2" class="w-full px-3 py-2.5 th-input rounded-lg text-sm focus:border-brand focus:outline-none transition">
+              <option value="○" data-i18n="No Issues">No Issues</option><option value="▲" data-i18n="Monitor">Monitor</option><option value="×" data-i18n="Risk">Risk</option>
+            </select>
+          </div>
+          <div>
+            <label for="inputD3" class="block text-[10px] font-medium th-text-m uppercase tracking-wider mb-1.5" data-i18n="ESG Risk">ESG Risk</label>
+            <select id="inputD3" class="w-full px-3 py-2.5 th-input rounded-lg text-sm focus:border-brand focus:outline-none transition">
+              <option value="○" data-i18n="No Issues">No Issues</option><option value="▲" data-i18n="Monitor">Monitor</option><option value="×" data-i18n="Risk">Risk</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Investor Profile Selector -->
+      <div class="mb-6">
+        <p class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m mb-3" data-i18n="Investor Profile">Investor Profile</p>
+        <div class="grid grid-cols-1 sm:grid-cols-5 gap-2" id="profileCards" role="radiogroup" aria-label="Investor Profile">
+          <button type="button" class="profile-card selected" role="radio" data-profile="balanced" onclick="selectProfile('balanced')" aria-checked="true">
+            <!-- Scale / Balance -->
+            <span class="profile-icon"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 8l9-5 9 5M5 10l7 3.5L19 10M6 17h12"/></svg></span>
+            <span class="profile-name" data-i18n="Balanced">Balanced</span>
+            <span class="profile-sub">GARP</span>
+          </button>
+          <button type="button" class="profile-card" role="radio" data-profile="value" onclick="selectProfile('value')" aria-checked="false">
+            <!-- Diamond / Gem -->
+            <span class="profile-icon"><svg viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9l4-6z"/><path d="M2 9h20M12 3L8 9l4 12 4-12-4-6z"/></svg></span>
+            <span class="profile-name" data-i18n="Value">Value</span>
+            <span class="profile-sub">Buffett / Graham</span>
+          </button>
+          <button type="button" class="profile-card" role="radio" data-profile="growth" onclick="selectProfile('growth')" aria-checked="false">
+            <!-- Trending Up -->
+            <span class="profile-icon"><svg viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span>
+            <span class="profile-name" data-i18n="Growth">Growth</span>
+            <span class="profile-sub">Lynch / Fisher</span>
+          </button>
+          <button type="button" class="profile-card" role="radio" data-profile="quality" onclick="selectProfile('quality')" aria-checked="false">
+            <!-- Shield / Quality -->
+            <span class="profile-icon"><svg viewBox="0 0 24 24"><path d="M12 2l7 4v6c0 5-3.5 9.74-7 11-3.5-1.26-7-6-7-11V6l7-4z"/><polyline points="9 12 11 14 15 10"/></svg></span>
+            <span class="profile-name" data-i18n="Quality">Quality</span>
+            <span class="profile-sub">Fundsmith / Munger</span>
+          </button>
+          <button type="button" class="profile-card" role="radio" data-profile="income" onclick="selectProfile('income')" aria-checked="false">
+            <!-- Layers / Income -->
+            <span class="profile-icon"><svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span>
+            <span class="profile-name" data-i18n="Income">Income</span>
+            <span class="profile-sub">Dividend / GPIF</span>
+          </button>
+        </div>
+        <p id="profileDesc" class="text-[10px] th-text-m mt-2 leading-relaxed"></p>
+      </div>
+
+      <p id="analyzeError" class="hidden mb-2 text-xs text-red-500 tracking-wider" role="alert" aria-live="assertive"></p>
+      <div class="flex gap-3">
+        <button id="btnAnalyze" class="flex-1 bg-brand hover:bg-brand-light text-white font-semibold text-xs uppercase tracking-[0.18em] py-4 transition-all duration-300 disabled:opacity-20 disabled:cursor-not-allowed" style="border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif;letter-spacing:0.18em" disabled>
+          <span id="btnText" data-i18n="Analyze">Analyze</span>
+          <svg id="btnSpinner" class="hidden animate-spin inline w-4 h-4 ml-2" fill="none" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+        </button>
+        <button id="btnSample" class="px-8 py-4 border hover:border-brand th-text-s font-semibold text-xs uppercase tracking-[0.18em] transition-all duration-300" style="border-color:var(--border-s);border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">
+          <span data-i18n="Demo">Demo</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dashboard — Porsche style -->
+  <section id="dashboard" class="hidden pb-16 px-4 sm:px-8" style="padding-top:calc(72px + 2rem)">
+    <div class="max-w-[1400px] mx-auto">
+
+      <!-- Hero Header — Porsche architectural layout with image -->
+      <div class="mb-12 fade-up dashboard-hero-img" style="padding:2rem;margin:-2rem;margin-bottom:2rem">
+        <!-- Thin top rule -->
+        <div class="w-full h-px mb-8" style="background:var(--border-m)"></div>
+        <div class="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6">
+          <div>
+            <div class="flex items-center gap-4 mb-3 flex-wrap">
+              <span id="tickerBadge" class="text-[10px] font-bold tracking-[0.22em] uppercase px-3 py-1 text-brand" style="background:rgba(213,0,28,0.08);border:1px solid rgba(213,0,28,0.2);font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif"></span>
+              <span id="currencyBadge" class="text-[10px] font-bold tracking-[0.18em] uppercase px-3 py-1 hidden" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);color:#3b82f6;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif"></span>
+              <span id="profileBadge" class="text-[10px] font-bold tracking-[0.18em] uppercase px-3 py-1 hidden" style="background:rgba(120,53,15,0.08);border:1px solid rgba(120,53,15,0.25);color:#92400e;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif"></span>
+              <span class="w-px h-3" style="background:var(--border-m)"></span>
+              <span id="industryBadge" class="text-[10px] tracking-[0.14em] uppercase th-text-m" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif"></span>
+            </div>
+            <h2 id="companyName" class="text-[clamp(2.4rem,4vw,4rem)] font-bold leading-none tracking-[0.03em] uppercase" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif"></h2>
+          </div>
+          <div id="verdictCard" class="text-center px-10 py-6 glow-red w-full sm:w-auto" style="border-radius:0">
+            <p class="text-[9px] uppercase tracking-[0.24em] opacity-60 mb-2" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" data-i18n="Investment Verdict">Investment Verdict</p>
+            <p id="verdictText" class="text-4xl font-bold tracking-[0.06em] uppercase" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif"></p>
+            <p id="verdictScore" class="text-[10px] opacity-50 mt-1.5 tracking-[0.14em]"></p>
+          </div>
+        </div>
+        <div class="w-full h-px mt-8" style="background:var(--border)"></div>
+      </div>
+
+      <!-- Score Cards — Porsche sharp tiles with decorative images -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div id="scoreA" class="card-hover score-card-accent" style="border-radius:0"></div>
+        <div id="scoreB" class="card-hover score-card-accent" style="border-radius:0"></div>
+        <div id="scoreC" class="card-hover score-card-accent" style="border-radius:0"></div>
+        <div id="scoreD" class="card-hover score-card-accent" style="border-radius:0"></div>
+      </div>
+
+      <!-- Decorative image strip between score cards and tabs -->
+      <div class="section-img-strip">
+        <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=75"
+             srcset="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&q=75 400w, https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=75 800w, https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1400&q=80 1400w"
+             sizes="100vw" width="1400" height="120" alt="Financial data visualization" loading="lazy">
+      </div>
+
+      <!-- Tabs — Porsche thin underline style -->
+      <div class="mb-8">
+        <nav class="flex gap-0 border-b overflow-x-auto scrollbar-hide" id="tabNav" role="tablist" aria-label="Analysis sections" style="border-color:var(--border-s)">
+          <button class="tab-btn tab-active px-6 py-4 text-[10px] font-semibold uppercase tracking-[0.18em] border-b-2 transition-all duration-300 whitespace-nowrap flex-shrink-0" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" role="tab" aria-selected="true" aria-controls="tab-analysis" data-tab="analysis" data-i18n="Analysis">Analysis</button>
+          <button class="tab-btn px-6 py-4 text-[10px] font-semibold uppercase tracking-[0.18em] th-text-m border-b-2 border-transparent transition-all duration-300 whitespace-nowrap flex-shrink-0" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" role="tab" aria-selected="false" aria-controls="tab-roe" data-tab="roe" data-i18n="PBR Decomposition">PBR Decomposition</button>
+          <button class="tab-btn px-6 py-4 text-[10px] font-semibold uppercase tracking-[0.18em] th-text-m border-b-2 border-transparent transition-all duration-300 whitespace-nowrap flex-shrink-0" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" role="tab" aria-selected="false" aria-controls="tab-charts" data-tab="charts" data-i18n="Time Series">Time Series</button>
+          <button class="tab-btn px-6 py-4 text-[10px] font-semibold uppercase tracking-[0.18em] th-text-m border-b-2 border-transparent transition-all duration-300 whitespace-nowrap flex-shrink-0" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" role="tab" aria-selected="false" aria-controls="tab-custom" data-tab="custom" data-i18n="Custom">Custom</button>
+          <button class="tab-btn px-6 py-4 text-[10px] font-semibold uppercase tracking-[0.18em] th-text-m border-b-2 border-transparent transition-all duration-300 whitespace-nowrap flex-shrink-0" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" role="tab" aria-selected="false" aria-controls="tab-competitor" data-tab="competitor" data-i18n="Competitor Analysis">Competitor Analysis</button>
+        </nav>
+      </div>
+
+      <!-- Tab Content: Merged Analysis -->
+      <div id="tab-analysis" class="tab-content" role="tabpanel" aria-labelledby="tab-analysis-btn">
+        <!-- Decorative image header for analysis -->
+        <div class="section-img-strip" style="height:80px;margin-top:0;margin-bottom:1.5rem">
+          <img src="https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=800&q=75"
+               srcset="https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=400&q=75 400w, https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=800&q=75 800w, https://images.unsplash.com/photo-1642790106117-e829e14a795f?w=1400&q=80 1400w"
+               sizes="100vw" width="1400" height="80" alt="Financial analysis header" loading="lazy">
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div><h3 class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m mb-5" data-i18n="Performance">Performance</h3><div id="perfItems" class="space-y-2"></div></div>
+          <div><h3 class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m mb-5" data-i18n="Growth & Profitability">Growth & Profitability</h3><div id="growthItems" class="space-y-2"></div></div>
+          <div><h3 class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m mb-5" data-i18n="Financial Health">Financial Health</h3><div id="healthItems" class="space-y-2"></div></div>
+          <div><h3 class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m mb-5" data-i18n="Valuation & Risk">Valuation & Risk</h3><div id="valuationItems" class="space-y-2"></div></div>
+          <div>
+            <h3 class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m mb-5" data-i18n="ROIC / WACC">ROIC / WACC</h3><div id="roicItems" class="space-y-2"></div>
+            <h3 class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m mb-5 mt-8" data-i18n="CCC Analysis">CCC Analysis</h3><div id="cccItems" class="space-y-2"></div>
+          </div>
+          <div>
+            <h3 class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m mb-5" data-i18n="CF Analysis">CF Analysis</h3><div id="cfItems" class="space-y-2"></div>
+          </div>
+          <div><h3 class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m mb-5" data-i18n="ESG & Qualitative">ESG & Qualitative</h3><div id="esgItems" class="space-y-2"></div></div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Custom Analysis -->
+      <div id="tab-custom" class="tab-content hidden" role="tabpanel" aria-labelledby="tab-custom-btn">
+        <div id="customEmpty" class="text-center py-16">
+          <p class="th-text-m text-sm mb-4" data-i18n="custom-empty-msg">Select metrics to build your custom analysis view</p>
+          <button id="btnOpenChecklist" class="px-6 py-3 bg-brand text-white text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-brand-dark transition-all">
+            <span data-i18n="Select Metrics">Select Metrics</span>
+          </button>
+        </div>
+        <div id="customContent" class="hidden">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-sm font-bold th-text-s" data-i18n="Custom Analysis">Custom Analysis</h3>
+            <button id="btnEditChecklist" class="px-4 py-2 text-[10px] font-bold uppercase tracking-widest border th-border-s rounded-lg hover:border-brand hover:text-brand transition-all">
+              <span data-i18n="Edit Selection">Edit Selection</span>
+            </button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div id="customCat-performance" class="hidden"><h3 class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m mb-5" data-i18n="Performance">Performance</h3><div class="custom-cat-items space-y-2"></div></div>
+            <div id="customCat-growth" class="hidden"><h3 class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m mb-5" data-i18n="Growth">Growth</h3><div class="custom-cat-items space-y-2"></div></div>
+            <div id="customCat-profitability" class="hidden"><h3 class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m mb-5" data-i18n="Profitability">Profitability</h3><div class="custom-cat-items space-y-2"></div></div>
+            <div id="customCat-health" class="hidden"><h3 class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m mb-5" data-i18n="Financial Health">Financial Health</h3><div class="custom-cat-items space-y-2"></div></div>
+            <div id="customCat-valuation" class="hidden"><h3 class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m mb-5" data-i18n="Valuation & Risk">Valuation & Risk</h3><div class="custom-cat-items space-y-2"></div></div>
+            <div id="customCat-other" class="hidden"><h3 class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m mb-5" data-i18n="Other">Other</h3><div class="custom-cat-items space-y-2"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metric Checklist Modal -->
+      <div id="checklistModal" class="chart-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="checklistTitle">
+        <div class="chart-modal" style="max-height:85vh;overflow-y:auto">
+          <div class="flex items-center justify-between mb-6">
+            <h3 id="checklistTitle" class="text-sm font-bold th-text-s" data-i18n="Select Metrics">Select Metrics</h3>
+            <button id="checklistClose" class="th-text-m hover:th-text text-lg leading-none" aria-label="Close metric selection">&times;</button>
+          </div>
+          <div id="checklistBody" class="space-y-6"></div>
+          <div class="flex justify-end gap-3 mt-6 pt-4 border-t" style="border-color:var(--border)">
+            <button id="checklistClear" class="px-4 py-2 text-[10px] font-bold uppercase tracking-widest border th-border-s rounded-lg hover:border-brand transition-all" data-i18n="Clear All">Clear All</button>
+            <button id="checklistApply" class="px-6 py-2 bg-brand text-white text-[10px] font-bold uppercase tracking-widest rounded-lg hover:bg-brand-dark transition-all" data-i18n="Apply">Apply</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-roe" class="tab-content hidden" role="tabpanel" aria-labelledby="tab-roe-btn"><div id="roeTree"></div></div>
+
+      <div id="tab-charts" class="tab-content hidden" role="tabpanel" aria-labelledby="tab-charts-btn">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="th-bg-1 p-4 sm:p-6 border th-border" style="border-radius:0"><h4 class="text-[9px] font-semibold uppercase tracking-[0.22em] th-text-m mb-4" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" data-i18n="Revenue">Revenue</h4><canvas id="chartRevenue" role="img" aria-label="Revenue time series chart"></canvas></div>
+          <div class="th-bg-1 p-4 sm:p-6 border th-border" style="border-radius:0"><h4 class="text-[9px] font-semibold uppercase tracking-[0.22em] th-text-m mb-4" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" data-i18n="Net Income">Net Income</h4><canvas id="chartNetIncome" role="img" aria-label="Net income time series chart"></canvas></div>
+          <div class="th-bg-1 p-4 sm:p-6 border th-border" style="border-radius:0"><h4 class="text-[9px] font-semibold uppercase tracking-[0.22em] th-text-m mb-4" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" data-i18n="Free Cash Flow">Free Cash Flow</h4><canvas id="chartFCF" role="img" aria-label="Free cash flow time series chart"></canvas></div>
+          <div class="th-bg-1 p-4 sm:p-6 border th-border" style="border-radius:0"><h4 class="text-[9px] font-semibold uppercase tracking-[0.22em] th-text-m mb-4" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" data-i18n="Earnings Per Share">Earnings Per Share</h4><canvas id="chartEPS" role="img" aria-label="Earnings per share time series chart"></canvas></div>
+          <div class="th-bg-1 p-4 sm:p-6 border th-border" style="border-radius:0"><h4 class="text-[9px] font-semibold uppercase tracking-[0.22em] th-text-m mb-4" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">ROE / ROA</h4><canvas id="chartROE" role="img" aria-label="ROE and ROA time series chart"></canvas></div>
+          <div class="th-bg-1 p-4 sm:p-6 border th-border" style="border-radius:0"><h4 class="text-[9px] font-semibold uppercase tracking-[0.22em] th-text-m mb-4" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" data-i18n="Balance Sheet">Balance Sheet</h4><canvas id="chartBS" role="img" aria-label="Balance sheet time series chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Competitor Analysis Tab -->
+      <div id="tab-competitor" class="tab-content hidden" role="tabpanel" aria-labelledby="tab-competitor-btn">
+        <div id="competitorUpload" class="mb-8">
+          <p class="text-sm font-medium th-text-s mb-6" data-i18n="comp-upload-msg">Enter ticker symbols or upload Excel files for up to 5 companies to compare</p>
+          <div id="competitorSlots" class="space-y-2">
+            <div class="comp-slot flex flex-wrap sm:flex-nowrap items-center gap-3 p-4 th-bg-1 border th-border" style="border-radius:0" data-slot="0" data-mode="ticker">
+              <span class="text-xs font-bold tracking-[0.2em] w-6 text-center" style="color:#d5001c;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">01</span>
+              <input type="text" placeholder="Company A…" aria-label="Company name" autocomplete="off" class="comp-name px-3 py-2 th-input text-xs border focus:border-brand outline-none" style="border-radius:0;width:120px;min-width:90px">
+              <button class="comp-mode-toggle px-2 py-2 border text-[10px] font-semibold tracking-wider hover:border-brand transition-all" style="border-color:var(--border-s);border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" title="Toggle between ticker and file input" aria-label="Switch input mode between Ticker and File">TKR</button>
+              <input type="text" placeholder="7203.T" aria-label="Ticker symbol" autocomplete="off" spellcheck="false" class="comp-ticker flex-1 px-3 py-2 th-input text-xs border focus:border-brand outline-none" style="border-radius:0">
+              <label class="comp-file-label cursor-pointer px-4 py-2 border text-[10px] font-semibold tracking-[0.14em] uppercase hover:border-brand transition-all flex items-center gap-2 hidden" style="border-color:var(--border-s);border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12"/></svg>
+                <span data-i18n="Select File">Select File</span>
+                <input type="file" accept=".xlsx,.xls" class="comp-file hidden">
+              </label>
+              <span class="comp-file-name text-[10px] th-text-m truncate max-w-[150px]"></span>
+              <button class="comp-remove text-base th-text-d hover:text-red-500 transition-all leading-none hidden" aria-label="Remove competitor">&times;</button>
+            </div>
+            <div class="comp-slot flex flex-wrap sm:flex-nowrap items-center gap-3 p-4 th-bg-1 border th-border" style="border-radius:0" data-slot="1" data-mode="ticker">
+              <span class="text-xs font-bold tracking-[0.2em] w-6 text-center" style="color:#3b82f6;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">02</span>
+              <input type="text" placeholder="Company B…" aria-label="Company name" autocomplete="off" class="comp-name px-3 py-2 th-input text-xs border focus:border-brand outline-none" style="border-radius:0;width:120px;min-width:90px">
+              <button class="comp-mode-toggle px-2 py-2 border text-[10px] font-semibold tracking-wider hover:border-brand transition-all" style="border-color:var(--border-s);border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" title="Toggle between ticker and file input" aria-label="Switch input mode between Ticker and File">TKR</button>
+              <input type="text" placeholder="AAPL" aria-label="Ticker symbol" autocomplete="off" spellcheck="false" class="comp-ticker flex-1 px-3 py-2 th-input text-xs border focus:border-brand outline-none" style="border-radius:0">
+              <label class="comp-file-label cursor-pointer px-4 py-2 border text-[10px] font-semibold tracking-[0.14em] uppercase hover:border-brand transition-all flex items-center gap-2 hidden" style="border-color:var(--border-s);border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12"/></svg>
+                <span data-i18n="Select File">Select File</span>
+                <input type="file" accept=".xlsx,.xls" class="comp-file hidden">
+              </label>
+              <span class="comp-file-name text-[10px] th-text-m truncate max-w-[150px]"></span>
+              <button class="comp-remove text-base th-text-d hover:text-red-500 transition-all leading-none hidden" aria-label="Remove competitor">&times;</button>
+            </div>
+            <div class="comp-slot flex flex-wrap sm:flex-nowrap items-center gap-3 p-4 th-bg-1 border th-border" style="border-radius:0" data-slot="2" data-mode="ticker">
+              <span class="text-xs font-bold tracking-[0.2em] w-6 text-center" style="color:#22c55e;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">03</span>
+              <input type="text" placeholder="Company C…" aria-label="Company name" autocomplete="off" class="comp-name px-3 py-2 th-input text-xs border focus:border-brand outline-none" style="border-radius:0;width:120px;min-width:90px">
+              <button class="comp-mode-toggle px-2 py-2 border text-[10px] font-semibold tracking-wider hover:border-brand transition-all" style="border-color:var(--border-s);border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" title="Toggle between ticker and file input" aria-label="Switch input mode between Ticker and File">TKR</button>
+              <input type="text" placeholder="9984.T" aria-label="Ticker symbol" autocomplete="off" spellcheck="false" class="comp-ticker flex-1 px-3 py-2 th-input text-xs border focus:border-brand outline-none" style="border-radius:0">
+              <label class="comp-file-label cursor-pointer px-4 py-2 border text-[10px] font-semibold tracking-[0.14em] uppercase hover:border-brand transition-all flex items-center gap-2 hidden" style="border-color:var(--border-s);border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12"/></svg>
+                <span data-i18n="Select File">Select File</span>
+                <input type="file" accept=".xlsx,.xls" class="comp-file hidden">
+              </label>
+              <span class="comp-file-name text-[10px] th-text-m truncate max-w-[150px]"></span>
+              <button class="comp-remove text-base th-text-d hover:text-red-500 transition-all leading-none hidden" aria-label="Remove competitor">&times;</button>
+            </div>
+            <div class="comp-slot flex flex-wrap sm:flex-nowrap items-center gap-3 p-4 th-bg-1 border th-border" style="border-radius:0" data-slot="3" data-mode="ticker">
+              <span class="text-xs font-bold tracking-[0.2em] w-6 text-center" style="color:#f59e0b;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">04</span>
+              <input type="text" placeholder="Company D…" aria-label="Company name" autocomplete="off" class="comp-name px-3 py-2 th-input text-xs border focus:border-brand outline-none" style="border-radius:0;width:120px;min-width:90px">
+              <button class="comp-mode-toggle px-2 py-2 border text-[10px] font-semibold tracking-wider hover:border-brand transition-all" style="border-color:var(--border-s);border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" title="Toggle between ticker and file input" aria-label="Switch input mode between Ticker and File">TKR</button>
+              <input type="text" placeholder="6758.T" aria-label="Ticker symbol" autocomplete="off" spellcheck="false" class="comp-ticker flex-1 px-3 py-2 th-input text-xs border focus:border-brand outline-none" style="border-radius:0">
+              <label class="comp-file-label cursor-pointer px-4 py-2 border text-[10px] font-semibold tracking-[0.14em] uppercase hover:border-brand transition-all flex items-center gap-2 hidden" style="border-color:var(--border-s);border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12"/></svg>
+                <span data-i18n="Select File">Select File</span>
+                <input type="file" accept=".xlsx,.xls" class="comp-file hidden">
+              </label>
+              <span class="comp-file-name text-[10px] th-text-m truncate max-w-[150px]"></span>
+              <button class="comp-remove text-base th-text-d hover:text-red-500 transition-all leading-none hidden" aria-label="Remove competitor">&times;</button>
+            </div>
+            <div class="comp-slot flex flex-wrap sm:flex-nowrap items-center gap-3 p-4 th-bg-1 border th-border" style="border-radius:0" data-slot="4" data-mode="ticker">
+              <span class="text-xs font-bold tracking-[0.2em] w-6 text-center" style="color:#8b5cf6;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">05</span>
+              <input type="text" placeholder="Company E…" aria-label="Company name" autocomplete="off" class="comp-name px-3 py-2 th-input text-xs border focus:border-brand outline-none" style="border-radius:0;width:120px;min-width:90px">
+              <button class="comp-mode-toggle px-2 py-2 border text-[10px] font-semibold tracking-wider hover:border-brand transition-all" style="border-color:var(--border-s);border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" title="Toggle between ticker and file input" aria-label="Switch input mode between Ticker and File">TKR</button>
+              <input type="text" placeholder="MSFT" aria-label="Ticker symbol" autocomplete="off" spellcheck="false" class="comp-ticker flex-1 px-3 py-2 th-input text-xs border focus:border-brand outline-none" style="border-radius:0">
+              <label class="comp-file-label cursor-pointer px-4 py-2 border text-[10px] font-semibold tracking-[0.14em] uppercase hover:border-brand transition-all flex items-center gap-2 hidden" style="border-color:var(--border-s);border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12"/></svg>
+                <span data-i18n="Select File">Select File</span>
+                <input type="file" accept=".xlsx,.xls" class="comp-file hidden">
+              </label>
+              <span class="comp-file-name text-[10px] th-text-m truncate max-w-[150px]"></span>
+              <button class="comp-remove text-base th-text-d hover:text-red-500 transition-all leading-none hidden" aria-label="Remove competitor">&times;</button>
+            </div>
+          </div>
+          <div class="flex items-center gap-4 mt-6">
+            <button id="btnCompetitorAnalyze" class="bg-brand hover:bg-red-700 text-white font-semibold text-[10px] uppercase tracking-[0.18em] py-3 px-8 transition-all duration-300 disabled:opacity-30" style="border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" disabled>
+              <span data-i18n="Compare">Compare</span>
+            </button>
+            <span id="compLoading" class="hidden text-[10px] th-text-m animate-pulse tracking-wider" data-i18n="Analyzing…" role="status" aria-live="polite">Analyzing…</span>
+          </div>
+        </div>
+        <!-- Summary Table -->
+        <div id="competitorSummary" class="hidden mb-8"></div>
+        <!-- Charts Grid -->
+        <div id="competitorCharts" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+      </div>
+
+    </div>
+  </section>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    // i18n: currentLang は他の変数より先に宣言（Temporal Dead Zone 回避）
+    let currentLang = localStorage.getItem('lang') || 'en';
+    // H5: HTML エスケープ — innerHTML への文字列挿入時に使用
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    const uploadSection = $('uploadSection'), dashboard = $('dashboard');
+    const dropZone = $('dropZone'), fileInput = $('fileInput');
+    const btnAnalyze = $('btnAnalyze'), btnSample = $('btnSample'), btnReset = $('btnReset');
+    const metaForm = $('metaForm'), fileName = $('fileName');
+    let selectedFile = null, charts = {}, lastTimeseries = null, lastData = null, lastBenchmark = null;
+    let selectedInvestorProfile = 'balanced';
+
+    const PROFILE_DESC = {
+      balanced: {
+        ja: '成長・割安・品質を均等に評価する標準的アプローチ。最も一般的な機関投資家の基本形。(例: ウェリントン・マネジメント、Capital Group)',
+        en: 'Balanced approach equally weighting growth, value, and quality. The most common institutional investor framework. (e.g. Wellington Management, Capital Group)',
+      },
+      value: {
+        ja: '割安性と安全余白を最重視。低PER・低PBR・強固なバランスシートを優先する。(例: バフェット、グレアム流、Dodge & Cox)',
+        en: 'Prioritizes undervaluation and margin of safety. Focuses on low P/E, low P/B, and strong balance sheets. (e.g. Buffett, Graham, Dodge & Cox)',
+      },
+      growth: {
+        ja: '高い売上・EPS成長率を最重視。現在の割高は将来成長で正当化できると判断する。(例: リンチ、フィッシャー流、ARK Invest)',
+        en: 'Prioritizes high revenue and EPS growth. Current premium valuations are justified by future growth potential. (e.g. Lynch, Fisher, ARK Invest)',
+      },
+      quality: {
+        ja: '高ROE・高マージン・経済的な堀を重視。適正価格での優良企業保有。(例: テリー・スミス、マンガー流、Artisan Partners)',
+        en: 'Focuses on high ROE, high margins, and economic moats. Holds exceptional businesses at fair prices. (e.g. Terry Smith, Munger, Artisan Partners)',
+      },
+      income: {
+        ja: '安定配当・低リスク・成熟企業を重視。低ボラティリティの長期保有を前提とする。(例: 年金基金(GPIF等)、バンガード・インカムファンド)',
+        en: 'Focuses on stable dividends, low risk, and mature companies. Designed for low-volatility long-term holding. (e.g. GPIF, Vanguard Income Fund)',
+      },
+    };
+
+    function selectProfile(profile) {
+      selectedInvestorProfile = profile;
+      document.querySelectorAll('.profile-card').forEach(btn => {
+        const sel = btn.dataset.profile === profile;
+        btn.classList.toggle('selected', sel);
+        btn.setAttribute('aria-checked', sel ? 'true' : 'false');
+      });
+      const desc = $('profileDesc');
+      if (desc) {
+        const entry = PROFILE_DESC[profile];
+        desc.textContent = entry ? (currentLang === 'en' ? entry.en : entry.ja) : '';
+      }
+    }
+
+    // Initialize profile desc
+    selectProfile('balanced');
+
+    // Region toggle: 'global' or 'japan'
+    let benchmarkRegion = localStorage.getItem('benchRegion') || 'global';
+
+    // Industry name translations (EN -> JA)
+    const industryJa = {
+      'Advertising':'広告','Aerospace/Defense':'航空宇宙・防衛','Air Transport':'航空輸送','Apparel':'アパレル',
+      'Auto & Truck':'自動車・トラック','Auto Parts':'自動車部品','Bank (Money Center)':'大手銀行','Banks (Regional)':'地方銀行',
+      'Beverage (Alcoholic)':'酒類','Beverage (Soft)':'清涼飲料','Broadcasting':'放送','Brokerage & Investment Banking':'証券・投資銀行',
+      'Building Materials':'建築資材','Business & Consumer Services':'ビジネス・消費者サービス','Cable TV':'ケーブルTV',
+      'Chemical (Basic)':'基礎化学','Chemical (Diversified)':'総合化学','Chemical (Specialty)':'機能化学',
+      'Coal & Related Energy':'石炭・関連エネルギー','Computer Services':'ITサービス','Computers/Peripherals':'コンピュータ・周辺機器',
+      'Construction Supplies':'建設資材','Diversified':'コングロマリット','Drugs (Biotechnology)':'バイオテクノロジー',
+      'Drugs (Pharmaceutical)':'医薬品','Education':'教育','Electrical Equipment':'電気機器',
+      'Electronics (Consumer & Office)':'家電・OA機器','Electronics (General)':'電子部品・総合','Engineering/Construction':'エンジニアリング・建設',
+      'Entertainment':'エンターテインメント','Environmental & Waste Services':'環境・廃棄物処理','Farming/Agriculture':'農業',
+      'Financial Svcs. (Non-bank & Insurance)':'ノンバンク金融','Food Processing':'食品加工','Food Wholesalers':'食品卸売',
+      'Furn/Home Furnishings':'家具・インテリア','Green & Renewable Energy':'再生可能エネルギー','Healthcare Products':'ヘルスケア製品',
+      'Healthcare Support Services':'ヘルスケア支援サービス','Heathcare Information and Technology':'医療IT',
+      'Homebuilding':'住宅建設','Hospitals/Healthcare Facilities':'病院・医療施設','Hotel/Gaming':'ホテル・カジノ',
+      'Household Products':'日用品','Information Services':'情報サービス','Insurance (General)':'損害保険',
+      'Insurance (Life)':'生命保険','Insurance (Prop/Cas.)':'損害保険（P&C）','Investments & Asset Management':'投資・資産運用',
+      'Machinery':'機械','Metals & Mining':'金属・鉱業','Office Equipment & Services':'オフィス機器・サービス',
+      'Oil/Gas (Integrated)':'石油・ガス（統合）','Oil/Gas (Production and Exploration)':'石油・ガス（探鉱・生産）',
+      'Oil/Gas Distribution':'石油・ガス流通','Oilfield Svcs/Equip.':'油田サービス・機器','Packaging & Container':'包装・容器',
+      'Paper/Forest Products':'紙・林産品','Power':'電力','Precious Metals':'貴金属','Publishing & Newspapers':'出版・新聞',
+      'R.E.I.T.':'REIT','Real Estate (Development)':'不動産開発','Real Estate (General/Diversified)':'不動産（総合）',
+      'Real Estate (Operations & Services)':'不動産（運営・サービス）','Recreation':'レジャー','Reinsurance':'再保険',
+      'Restaurant/Dining':'レストラン・外食','Retail (Automotive)':'小売（自動車）','Retail (Building Supply)':'小売（建材）',
+      'Retail (Distributors)':'小売（卸売）','Retail (General)':'小売（総合）','Retail (Grocery and Food)':'小売（食品・スーパー）',
+      'Retail (REITs)':'小売REIT','Retail (Special Lines)':'小売（専門店）','Rubber& Tires':'ゴム・タイヤ',
+      'Semiconductor':'半導体','Semiconductor Equip':'半導体製造装置','Shipbuilding & Marine':'造船・海運',
+      'Shoe':'靴・履物','Software (Entertainment)':'ソフトウェア（ゲーム）','Software (Internet)':'ソフトウェア（インターネット）',
+      'Software (System & Application)':'ソフトウェア（システム）','Steel':'鉄鋼','Telecom (Wireless)':'通信（無線）',
+      'Telecom. Equipment':'通信機器','Telecom. Services':'通信サービス','Tobacco':'たばこ',
+      'Total Market':'市場全体','Total Market (without financials)':'市場全体（金融除く）',
+      'Transportation':'運輸','Transportation (Railroads)':'鉄道','Trucking':'トラック輸送',
+      'Utility (General)':'公益事業（総合）','Utility (Water)':'公益事業（水道）'
+    };
+
+    let industryNames = []; // Store original EN names
+
+    // Benchmark field mapping: chartKey -> { field, multiply, invert }
+    function getBenchmarkMap() {
+      return {
+        roe:          { field: benchmarkRegion === 'japan' ? 'roe_japan' : 'roe_global', multiply: 100 },
+        equity_ratio: { field: 'debt_to_capital_book', multiply: 100, invert: true },
+        pe_ratio:     { field: 'pe_aggregate_all' },
+        pb_ratio:     { field: 'pbr' },
+        ebitda:       { field: 'ebitda_margin', multiply: 100 },
+        op_margin:    { field: 'operating_margin', multiply: 100 },
+        roic:         { field: 'roic', multiply: 100 },
+        nd_ebitda:    { field: 'debt_to_ebitda' },
+      };
+    }
+
+    function getBenchmarkValue(chartKey) {
+      const benchmarkMap = getBenchmarkMap();
+      if (!lastBenchmark || !benchmarkMap[chartKey]) return null;
+      const m = benchmarkMap[chartKey];
+      let v = lastBenchmark[m.field];
+      if (v === undefined || v === null) return null;
+      if (m.invert) v = 1 - v;
+      if (m.multiply) v = v * m.multiply;
+      return v;
+    }
+
+    function toggleRegion() {
+      benchmarkRegion = benchmarkRegion === 'global' ? 'japan' : 'global';
+      localStorage.setItem('benchRegion', benchmarkRegion);
+      updateRegionButton();
+      updateIndustryDropdown();
+    }
+
+    function updateRegionButton() {
+      const btn = $('regionToggle');
+      if (btn) {
+        btn.textContent = benchmarkRegion === 'japan' ? '🇯🇵' : '🌐';
+        btn.title = benchmarkRegion === 'japan'
+          ? (currentLang === 'ja' ? '日本平均を使用中' : 'Using Japan averages')
+          : (currentLang === 'ja' ? 'グローバル平均を使用中' : 'Using Global averages');
+      }
+    }
+
+    function updateIndustryDropdown() {
+      const sel = $('inputIndustry');
+      if (!sel || !industryNames.length) return;
+      const current = sel.value;
+      sel.innerHTML = industryNames.map(n => {
+        const display = currentLang === 'ja' && industryJa[n] ? industryJa[n] : n;
+        return `<option value="${n}">${display}</option>`;
+      }).join('');
+      if (current) sel.value = current;
+    }
+
+    // Load Damodaran industry dropdown
+    fetch('/api/damodaran_industries').then(r => r.json()).then(names => {
+      industryNames = names;
+      updateIndustryDropdown();
+      updateRegionButton();
+    }).catch(() => {});
+
+    // ── i18n ──
+    const i18n = {
+      // Header & Upload
+      'Stock Analyzer':          { ja: '株式アナライザー', en: 'Stock Analyzer' },
+      'New Analysis':            { ja: '新規分析', en: 'New Analysis' },
+      'Export':                  { ja: 'エクスポート', en: 'Export' },
+      'Exporting…':             { ja: '出力中…', en: 'Exporting…' },
+      'Financial Analysis':      { ja: 'ファイナンシャル分析', en: 'Financial Analysis' },
+      'Upload your financial data to generate a comprehensive investment analysis': { ja: '財務データをアップロードして総合的な投資分析を行います', en: 'Upload your financial data to generate a comprehensive investment analysis' },
+      'Drop file here or click to browse': { ja: 'ファイルをドロップまたはクリックして選択', en: 'Drop file here or click to browse' },
+      'Excel (.xlsx) or JSON supported':   { ja: 'Excel (.xlsx) または JSON に対応', en: 'Excel (.xlsx) or JSON supported' },
+      'Analyze':        { ja: '分析開始', en: 'Analyze' },
+      'Analyzing…':     { ja: '分析中…', en: 'Analyzing…' },
+      'Demo':           { ja: 'デモ', en: 'Demo' },
+      'or upload file': { ja: 'またはファイルをアップロード', en: 'or upload file' },
+      'Fetch & Analyze': { ja: '取得＆分析', en: 'Fetch & Analyze' },
+      'Please enter a ticker symbol': { ja: 'ティッカーを入力してください', en: 'Please enter a ticker symbol' },
+      'ticker-error-suffix': { ja: ' — ティッカーを確認して再試行してください', en: ' — Check the ticker symbol and try again.' },
+      // Meta form
+      'Company':    { ja: '企業名', en: 'Company' },
+      'Ticker':     { ja: '証券コード', en: 'Ticker' },
+      'Industry':   { ja: '業種', en: 'Industry' },
+      'Currency':   { ja: '通貨', en: 'Currency' },
+      'currency-hint': { ja: 'Excelファイルの財務データの通貨を選択してください。ティッカー取得時は自動判定されます。', en: 'Select the currency for your Excel financial data. Auto-detected when fetching by ticker.' },
+      'Management': { ja: '経営陣', en: 'Management' },
+      'Ownership':  { ja: '株主構造', en: 'Ownership' },
+      'ESG Risk':   { ja: 'ESGリスク', en: 'ESG Risk' },
+      'No Issues':  { ja: '問題なし', en: 'No Issues' },
+      'Monitor':    { ja: '要注視', en: 'Monitor' },
+      'Risk':       { ja: 'リスク有', en: 'Risk' },
+      'Investor Profile': { ja: '投資家プロファイル', en: 'Investor Profile' },
+      // Verdict
+      'Investment Verdict': { ja: '投資判定', en: 'Investment Verdict' },
+      // Score sections
+      'A — Financial Health': { ja: 'A — 財務健全性', en: 'A — Financial Health' },
+      'B — Growth':           { ja: 'B — 成長性', en: 'B — Growth' },
+      'C — Valuation':        { ja: 'C — バリュエーション', en: 'C — Valuation' },
+      'D — ESG':              { ja: 'D — ESG', en: 'D — ESG' },
+      'Weight:':              { ja: 'ウェイト:', en: 'Weight:' },
+      // Tabs
+      'Analysis':    { ja: '分析', en: 'Analysis' },
+      'Custom':      { ja: 'カスタム', en: 'Custom' },
+      'Competitor Analysis': { ja: '競合分析', en: 'Competitor Analysis' },
+      'comp-upload-msg': { ja: '最大5社のExcelファイルをアップロードして比較', en: 'Upload Excel files for up to 5 companies to compare' },
+      'Compare': { ja: '比較する', en: 'Compare' },
+      'Select File': { ja: 'ファイル選択', en: 'Select File' },
+      'comp-summary-title': { ja: '競合比較サマリー', en: 'Competitor Comparison Summary' },
+      'Equity Ratio': { ja: '自己資本比率', en: 'Equity Ratio' },
+      'Metrics': { ja: '指標', en: 'Metrics' },
+      'comp-btn-absolute': { ja: '絶対値に切替', en: 'Absolute' },
+      'comp-btn-indexed': { ja: 'インデックスに切替', en: 'Indexed (Base=100)' },
+      'comp-mode-indexed': { ja: 'インデックス', en: 'Indexed' },
+      'comp-base': { ja: '基準年', en: 'Base Year' },
+      'PBR Decomposition':    { ja: 'PBR分解', en: 'PBR Decomposition' },
+      // Data states
+      'No Data': { ja: 'データなし', en: 'No Data' },
+      'Range:': { ja: '範囲:', en: 'Range:' },
+      'データなし': { ja: 'データなし', en: 'No Data' },
+      'データ不足': { ja: 'データ不足', en: 'Insufficient Data' },
+      '時系列データなし': { ja: '時系列データなし', en: 'No Time Series Data' },
+      'PBR変化：データ不足': { ja: 'PBR変化：データ不足', en: 'PBR Change: Insufficient Data' },
+      // Evaluation criteria
+      '評価基準': { ja: '評価基準', en: 'Evaluation Criteria' },
+      '基準値:': { ja: '基準値:', en: 'Benchmark:' },
+      '計算式': { ja: '計算式', en: 'Formula' },
+      // Valuation judgments
+      '適正水準': { ja: '適正水準', en: 'Fair Value' },
+      '割安': { ja: '割安', en: 'Undervalued' },
+      'やや割安': { ja: 'やや割安', en: 'Slightly Undervalued' },
+      'やや割高': { ja: 'やや割高', en: 'Slightly Overvalued' },
+      '割高': { ja: '割高', en: 'Overvalued' },
+      // Currency
+      '円': { ja: '円', en: 'JPY' },
+      // Warning messages
+      'PBR貢献度分析データ不足': { ja: 'PBR, PER, ROEの5年間データが不足しているため、貢献度分析を実施できません', en: 'Insufficient 5-year data for PBR, PER, ROE to perform contribution analysis' },
+      'ROA Tree':    { ja: 'ROAツリー', en: 'ROA Tree' },
+      'Time Series': { ja: '時系列', en: 'Time Series' },
+      // Custom tab
+      'Custom Analysis':    { ja: 'カスタム分析', en: 'Custom Analysis' },
+      'Select Metrics':     { ja: '指標を選択', en: 'Select Metrics' },
+      'Edit Selection':     { ja: '選択を編集', en: 'Edit Selection' },
+      'custom-empty-msg':   { ja: '指標を選択してカスタム分析ビューを作成', en: 'Select metrics to build your custom analysis view' },
+      'Apply':              { ja: '適用', en: 'Apply' },
+      'Clear All':          { ja: '全解除', en: 'Clear All' },
+      'Growth':             { ja: '成長性', en: 'Growth' },
+      // Investor Profile names
+      'Balanced':           { ja: 'バランス型', en: 'Balanced' },
+      'Value':              { ja: 'バリュー', en: 'Value' },
+      'Quality':            { ja: 'クオリティ', en: 'Quality' },
+      'Income':             { ja: 'インカム', en: 'Income' },
+      'Profitability':      { ja: '収益性', en: 'Profitability' },
+      'Other':              { ja: 'その他', en: 'Other' },
+      'cat-performance':    { ja: 'パフォーマンス', en: 'Performance' },
+      'cat-growth':         { ja: '成長性', en: 'Growth' },
+      'cat-profitability':  { ja: '収益性', en: 'Profitability' },
+      'cat-health':         { ja: '財務健全性', en: 'Financial Health' },
+      'cat-valuation':      { ja: 'バリュエーション・リスク', en: 'Valuation & Risk' },
+      'cat-other':          { ja: 'その他', en: 'Other' },
+      // Analysis sections
+      'Performance':           { ja: 'パフォーマンス', en: 'Performance' },
+      'Growth & Profitability': { ja: '成長性・収益性', en: 'Growth & Profitability' },
+      'Financial Health':       { ja: '財務健全性', en: 'Financial Health' },
+      'Valuation & Risk':       { ja: 'バリュエーション・リスク', en: 'Valuation & Risk' },
+      'ROIC / WACC':            { ja: 'ROIC / WACC', en: 'ROIC / WACC' },
+      'CCC Analysis':           { ja: 'CCC分析', en: 'CCC Analysis' },
+      'CF Analysis':            { ja: 'CF分析', en: 'CF Analysis' },
+      'CF Pattern':             { ja: 'CF構成分析', en: 'CF Pattern' },
+      'CF Pattern Result':      { ja: 'CF構成判定', en: 'CF Pattern Result' },
+      'cf-ideal-desc':          { ja: '営業CF(+) 投資CF(-) 財務CF(-) が理想型', en: 'Ideal: OCF(+) ICF(-) FCF(-)' },
+      'Ideal':                  { ja: '理想型', en: 'Ideal' },
+      'Non-Ideal':              { ja: '非理想型', en: 'Non-Ideal' },
+      '投資CF':                 { ja: '投資CF', en: 'Investing CF' },
+      '財務CF':                 { ja: '財務CF', en: 'Financing CF' },
+      '投資CF推移':             { ja: '投資CF推移', en: 'Investing CF Trend' },
+      '財務CF推移':             { ja: '財務CF推移', en: 'Financing CF Trend' },
+      'ESG & Qualitative':      { ja: 'ESG・定性評価', en: 'ESG & Qualitative' },
+      // Item card labels
+      'EBITDA Margin':    { ja: 'EBITDAマージン', en: 'EBITDA Margin' },
+      'P/E Ratio':        { ja: 'PER（株価収益率）', en: 'P/E Ratio' },
+      'P/B Ratio':        { ja: 'PBR（株価純資産倍率）', en: 'P/B Ratio' },
+      'Net Debt / EBITDA': { ja: '純有利子負債 / EBITDA', en: 'Net Debt / EBITDA' },
+      'ROIC vs WACC':     { ja: 'ROIC vs WACC', en: 'ROIC vs WACC' },
+      '経営陣変更':       { ja: '経営陣変更', en: 'Management Changes' },
+      '株主構造':         { ja: '株主構造', en: 'Shareholder Structure' },
+      'ESG / 規制リスク': { ja: 'ESG / 規制リスク', en: 'ESG / Regulatory Risk' },
+      '配当利回り':       { ja: '配当利回り', en: 'Dividend Yield' },
+      '配当性向':         { ja: '配当性向', en: 'Payout Ratio' },
+      '自己資本比率':     { ja: '自己資本比率', en: 'Equity Ratio' },
+      '当座比率':         { ja: '当座比率', en: 'Quick Ratio' },
+      '流動比率':         { ja: '流動比率', en: 'Current Ratio' },
+      '売上高推移':       { ja: '売上高推移', en: 'Revenue Trend' },
+      'FCF推移':          { ja: 'FCF推移', en: 'FCF Trend' },
+      'EPS推移':          { ja: 'EPS推移', en: 'EPS Trend' },
+      '営業CF推移':       { ja: '営業CF推移', en: 'Operating CF Trend' },
+      '営業利益率':       { ja: '営業利益率', en: 'Operating Margin' },
+      '営業CF':           { ja: '営業CF', en: 'Operating CF' },
+      '売上高 CAGR':      { ja: '売上高 CAGR', en: 'Revenue CAGR' },
+      'EPS Growth':       { ja: 'EPS成長率', en: 'EPS Growth' },
+      // ROA Tree
+      'Return on Assets':         { ja: '総資産利益率', en: 'Return on Assets' },
+      'Asset Turnover':           { ja: '資産回転率', en: 'Asset Turnover' },
+      'Fixed Asset Turnover':     { ja: '固定資産回転率', en: 'Fixed Asset Turnover' },
+      'Tangible Asset Turnover':  { ja: '有形固定資産回転率', en: 'Tangible Asset Turnover' },
+      'Intangible Asset Turnover':{ ja: '無形固定資産回転率', en: 'Intangible Asset Turnover' },
+      'Working Capital (CCC)':    { ja: '運転資本 (CCC)', en: 'Working Capital (CCC)' },
+      'Operating Margin':         { ja: '営業利益率', en: 'Operating Margin' },
+      'COGS Ratio':               { ja: '原価率', en: 'COGS Ratio' },
+      'SG&A Ratio':               { ja: '販管費率', en: 'SG&A Ratio' },
+      'ROA Contribution Ranking': { ja: 'ROA貢献度ランキング', en: 'ROA Contribution Ranking' },
+      '5Y Change:':               { ja: '5年変化:', en: '5Y Change:' },
+      // PBR Decomposition (Market Valuation Decomposition)
+      'Market Valuation':          { ja: '市場評価分解', en: 'Market Valuation' },
+      'pbr-formula':              { ja: 'PBR = ROE × PER', en: 'PBR = ROE × PER' },
+      'Market Expectation':       { ja: '市場期待（PER）', en: 'Market Expectation (PER)' },
+      'Profitability (ROE)':      { ja: '収益性（ROE）', en: 'Profitability (ROE)' },
+      'per-desc':                 { ja: '株価 / 1株利益。市場の成長期待を反映', en: 'Price / EPS. Reflects market growth expectations' },
+      'roe-desc':                 { ja: '純利益 / 自己資本。企業の収益力を示す', en: 'Net Income / Equity. Indicates profitability' },
+      'Return on Equity (DuPont)': { ja: '自己資本利益率 (デュポン分析)', en: 'Return on Equity (DuPont)' },
+      'Net Profit Margin':         { ja: '純利益率', en: 'Net Profit Margin' },
+      'Financial Leverage':        { ja: '財務レバレッジ', en: 'Financial Leverage' },
+      'ROE Contribution':          { ja: 'ROE貢献度', en: 'ROE Contribution' },
+      'PBR Contribution Ranking':  { ja: 'PBR貢献度ランキング', en: 'PBR Contribution Ranking' },
+      'PBR Driver Analysis':       { ja: 'PBR ドライバー分析', en: 'PBR Driver Analysis' },
+      '5年間の各要因がPBRに与えた影響を分解': { ja: '5年間の各要因がPBRに与えた影響を分解', en: 'Decomposition of each factor\'s impact on PBR over 5 years' },
+      'Key Insight':               { ja: 'キーインサイト', en: 'Key Insight' },
+      'Net Margin':                { ja: '純利益率', en: 'Net Margin' },
+      'Leverage':                  { ja: 'レバレッジ', en: 'Leverage' },
+      'breakdown-npm':  { ja: '純利益率 = 営業利益率 × 金利負担率 × 営業外損益率 × 税引後利益率', en: 'Net Margin = Op. Margin × Interest Burden × Non-Op. × Tax Retention' },
+      'breakdown-at':   { ja: '資産別の回転率内訳', en: 'Turnover breakdown by asset type' },
+      'breakdown-lev':  { ja: '自己資本 + 負債 = 総資産', en: 'Equity + Debt = Total Assets' },
+      // PBR Decomposition node labels
+      '純利益率':       { ja: '純利益率', en: 'Net Profit Margin' },
+      '営業利益率_roe': { ja: '営業利益率', en: 'Operating Margin' },
+      '原価率':         { ja: '原価率', en: 'COGS Ratio' },
+      '販管費率':       { ja: '販管費率', en: 'SG&A Ratio' },
+      '総資産回転率':   { ja: '総資産回転率', en: 'Total Asset Turnover' },
+      '固定資産回転率': { ja: '固定資産回転率', en: 'Fixed Asset Turnover' },
+      '売上債権回転率': { ja: '売上債権回転率', en: 'Accounts Receivable Turnover' },
+      '棚卸資産回転率': { ja: '棚卸資産回転率', en: 'Inventory Turnover' },
+      '財務レバレッジ': { ja: '財務レバレッジ', en: 'Financial Leverage' },
+      '負債比率':       { ja: '負債比率', en: 'Debt Ratio' },
+      '営業利益→純利益ギャップ': { ja: '営業利益→純利益ギャップ', en: 'Operating → Net Income Gap' },
+      '金利負担率':     { ja: '金利負担率', en: 'Interest Burden' },
+      '営業外損益率':   { ja: '営業外損益率', en: 'Non-Op. Income Rate' },
+      '税引後利益率':   { ja: '税引後利益率', en: 'Tax Retention Rate' },
+      '検算':           { ja: '検算', en: 'Check' },
+      '実績':           { ja: '実績', en: 'Actual' },
+      'PBR上昇要因':    { ja: 'PBR上昇要因', en: 'PBR Upside Drivers' },
+      'PBR下落要因':    { ja: 'PBR下落要因', en: 'PBR Downside Drivers' },
+      '適正レンジ':     { ja: '適正レンジ', en: 'Fair Range' },
+      'ROE DuPont Decomposition': { ja: 'ROE DuPont分解', en: 'ROE DuPont Decomposition' },
+      'PER変動':        { ja: 'PER変動', en: 'PER Change' },
+      // Charts
+      'Revenue':          { ja: '売上高', en: 'Revenue' },
+      'Net Income':       { ja: '純利益', en: 'Net Income' },
+      'Free Cash Flow':   { ja: 'FCF（フリーキャッシュフロー）', en: 'Free Cash Flow' },
+      'Earnings Per Share':{ ja: 'EPS（一株当たり利益）', en: 'Earnings Per Share' },
+      'Total Assets':     { ja: '総資産', en: 'Total Assets' },
+      'Equity':           { ja: '自己資本', en: 'Equity' },
+      'Debt':             { ja: '有利子負債', en: 'Debt' },
+      'Balance Sheet':    { ja: '貸借対照表', en: 'Balance Sheet' },
+      'Industry Avg':     { ja: '業界平均', en: 'Industry Avg' },
+      'vs Industry':      { ja: '対業界', en: 'vs Industry' },
+      // Section A eval texts
+      '◎全項通過':         { ja: '◎全項通過', en: '◎ All Passed' },
+      '▲要確認':           { ja: '▲要確認', en: '▲ Review Required' },
+      '▲要注意':           { ja: '▲要注意', en: '▲ Warning' },
+      '×NG（即時回避）':    { ja: '×NG（即時回避）', en: '× AVOID (Immediate)' },
+      // Section B eval texts
+      '×投資魅力低下':     { ja: '×投資魅力低下', en: '× Low Investment Appeal' },
+      '▲要追加調査':       { ja: '▲要追加調査', en: '▲ Further Review Needed' },
+      // Section C eval texts
+      '×タイミング要見直し': { ja: '×タイミング要見直し', en: '× Timing: Reconsider' },
+      '▲要コスト評価':     { ja: '▲要コスト評価', en: '▲ Cost Evaluation Required' },
+      // Section D eval texts
+      '◎リスクなし':       { ja: '◎リスクなし', en: '◎ No Risk' },
+      '▲リスク注意':       { ja: '▲リスク注意', en: '▲ Risk Alert' },
+      '×重要リスク確認':   { ja: '×重要リスク確認', en: '× Critical Risk Detected' },
+      // Analyst recommendations
+      'Analyst Consensus':  { ja: 'アナリスト合意', en: 'Analyst Consensus' },
+      'Target Price':       { ja: '目標株価', en: 'Target Price' },
+      'Upside':             { ja: '上昇余地', en: 'Upside' },
+      'Strong Buy':         { ja: '強い買い', en: 'Strong Buy' },
+      'Buy':                { ja: '買い', en: 'Buy' },
+      'Hold':               { ja: '中立', en: 'Hold' },
+      'Sell':               { ja: '売り', en: 'Sell' },
+      'analyst-breakdown':  { ja: '買い / 中立 / 売り', en: 'Buy / Hold / Sell' },
+      // Missing data reason
+      'Data unavailable':   { ja: 'データ未取得', en: 'Data unavailable' },
+      'N/A (Finance)':      { ja: 'N/A（金融業）', en: 'N/A (Finance)' },
+      // Loading states
+      'Fetching…':          { ja: '取得中…', en: 'Fetching…' },
+      // Year badge
+      'FY':                 { ja: '年度', en: 'FY' },
+      // Header
+      'Financial Intelligence': { ja: 'ファイナンシャル・インテリジェンス', en: 'Financial Intelligence' },
+      // PDF export
+      'PDF export failed': { ja: 'PDFの出力に失敗しました。', en: 'PDF export failed.' },
+    };
+
+    function t(key) {
+      const entry = i18n[key];
+      if (!entry) return key;
+      if (currentLang === 'ja') return entry.ja || key;
+      if (currentLang === 'en') return entry.en || key;
+      return key;
+    }
+
+    // Upload
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+    fileInput.addEventListener('change', e => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+    function handleFile(file) {
+      selectedFile = file;
+      fileName.textContent = file.name;
+      fileName.classList.remove('hidden');
+      btnAnalyze.disabled = false;
+      metaForm.classList.toggle('hidden', !(file.name.endsWith('.xlsx') || file.name.endsWith('.xls')));
+
+      // Auto-populate company/ticker from filename
+      const baseName = file.name.replace(/\.(xlsx?|xls)$/i, '');
+
+      // Try to extract ticker (numbers at start, or numbers after common separators)
+      const tickerMatch = baseName.match(/^(\d{4,5})|[-_](\d{4,5})[-_]/);
+      if (tickerMatch && !$('inputTicker').value) {
+        $('inputTicker').value = tickerMatch[1] || tickerMatch[2];
+      }
+
+      // Use filename as company name if not already filled
+      if (!$('inputCompany').value) {
+        // Clean up filename: remove ticker if found, remove common suffixes
+        let cleanName = baseName
+          .replace(/^(\d{4,5})[-_]?/, '')  // Remove leading ticker
+          .replace(/[-_]?(\d{4,5})[-_]?/, '') // Remove ticker in middle
+          .replace(/[-_](financials?|data|report|statements?)$/i, '') // Remove common suffixes
+          .replace(/[-_]+/g, ' ')  // Replace dashes/underscores with spaces
+          .trim();
+
+        if (cleanName) {
+          $('inputCompany').value = cleanName;
+        }
+      }
+    }
+
+    btnAnalyze.addEventListener('click', async () => {
+      if (!selectedFile) return;
+      setLoading(true);
+      try {
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+        fd.append('company', $('inputCompany').value);
+        fd.append('ticker', $('inputTicker').value);
+        const selIndustry = $('inputIndustry').value;
+        fd.append('industry', selIndustry);
+        fd.append('damodaran_industry', selIndustry);
+        fd.append('d1', $('inputD1').value);
+        fd.append('d2', $('inputD2').value);
+        fd.append('d3', $('inputD3').value);
+        fd.append('currency', $('inputCurrency').value);
+        fd.append('investor_profile', selectedInvestorProfile);
+        const res = await fetch('/api/analyze', { method: 'POST', body: fd });
+        const data = await res.json();
+        const analyzeError = $('analyzeError');
+        if (data.error) {
+          analyzeError.textContent = data.error;
+          analyzeError.classList.remove('hidden');
+          $('srAnnouncer').textContent = data.error;
+          return;
+        }
+        analyzeError.classList.add('hidden');
+        // Fetch industry benchmark
+        if (selIndustry) {
+          try {
+            const bRes = await fetch('/api/industry_benchmark?industry=' + encodeURIComponent(selIndustry));
+            if (bRes.ok) lastBenchmark = await bRes.json();
+            else lastBenchmark = null;
+          } catch(e) { lastBenchmark = null; }
+        }
+        renderDashboard(data);
+      } catch (e) {
+        const analyzeError = $('analyzeError');
+        analyzeError.textContent = e.message;
+        analyzeError.classList.remove('hidden');
+        $('srAnnouncer').textContent = e.message;
+      } finally { setLoading(false); }
+    });
+
+    btnSample.addEventListener('click', async () => {
+      setLoading(true); btnSample.disabled = true;
+      try {
+        const demoIndustry = 'Oilfield Svcs/Equip.';
+        const res = await fetch('/api/sample?damodaran_industry=' + encodeURIComponent(demoIndustry) + '&investor_profile=' + encodeURIComponent(selectedInvestorProfile));
+        const data = await res.json();
+        // Fetch industry benchmark for demo
+        try {
+          const bRes = await fetch('/api/industry_benchmark?industry=' + encodeURIComponent(demoIndustry));
+          if (bRes.ok) lastBenchmark = await bRes.json();
+          else lastBenchmark = null;
+        } catch(e) { lastBenchmark = null; }
+        renderDashboard(data);
+      }
+      catch (e) {
+        const analyzeError = $('analyzeError');
+        analyzeError.textContent = e.message;
+        analyzeError.classList.remove('hidden');
+        $('srAnnouncer').textContent = e.message;
+      }
+      finally { setLoading(false); btnSample.disabled = false; }
+    });
+
+    // Ticker fetch & analyze
+    const tickerInput = $('tickerInput');
+    const btnTickerFetch = $('btnTickerFetch');
+    const tickerError = $('tickerError');
+
+    function setTickerLoading(on) {
+      $('btnTickerText').textContent = on ? t('Fetching…') : t('Fetch & Analyze');
+      if (on) $('srAnnouncer').textContent = t('Fetching…');
+      $('btnTickerSpinner').classList.toggle('hidden', !on);
+      btnTickerFetch.disabled = on;
+      tickerInput.disabled = on;
+    }
+
+    btnTickerFetch.addEventListener('click', async () => {
+      const symbol = tickerInput.value.trim();
+      if (!symbol) { tickerError.textContent = t('Please enter a ticker symbol'); tickerError.classList.remove('hidden'); return; }
+      tickerError.classList.add('hidden');
+      setTickerLoading(true);
+      try {
+        const body = { ticker: symbol, d1: '○', d2: '○', d3: '○', investor_profile: selectedInvestorProfile };
+        const res = await fetch('/api/fetch_ticker', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+        const data = await res.json();
+        if (data.error) {
+          tickerError.textContent = data.error + t('ticker-error-suffix');
+          tickerError.classList.remove('hidden');
+          return;
+        }
+        tickerError.classList.add('hidden');
+        renderDashboard(data);
+      } catch (e) { tickerError.textContent = e.message; tickerError.classList.remove('hidden'); }
+      finally { setTickerLoading(false); }
+    });
+
+    tickerInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); btnTickerFetch.click(); }
+    });
+
+    // Currency selector: live re-render charts when changed (Excel data only)
+    const inputCurrency = $('inputCurrency');
+    if (inputCurrency) {
+      inputCurrency.addEventListener('change', () => {
+        if (!lastData) return;
+        // Only apply to Excel data — yfinance sets currency automatically
+        const source = lastData.timeseries && lastData.timeseries._source;
+        if (source === 'excel' || !source) {
+          currentCurrencyCode = inputCurrency.value;
+          currentCurrencySymbol = CURRENCY_SYMBOLS[currentCurrencyCode] || '¥';
+          const currBadge = $('currencyBadge');
+          if (currBadge) currBadge.textContent = currentCurrencySymbol + ' ' + currentCurrencyCode;
+          // Re-render charts with new currency symbol
+          if (lastTimeseries) renderCharts(lastTimeseries);
+        }
+      });
+    }
+
+    btnReset.addEventListener('click', () => {
+      dashboard.classList.add('hidden'); uploadSection.classList.remove('hidden'); btnReset.classList.add('hidden'); $('btnExport').classList.add('hidden');
+      Object.values(charts).forEach(c => c.destroy()); charts = {};
+      selectedFile = null; fileInput.value = ''; fileName.classList.add('hidden'); metaForm.classList.add('hidden'); btnAnalyze.disabled = true; lastBenchmark = null;
+      tickerInput.value = ''; tickerError.classList.add('hidden');
+    });
+
+    $('btnExport').addEventListener('click', () => {
+      const el = $('dashboard');
+      const companyName = ($('inputCompany') || {}).value || 'analysis';
+      const opt = {
+        margin: [10, 5, 10, 5],
+        filename: companyName.replace(/\s+/g, '_') + '_analysis.pdf',
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+      };
+      const exportBtn = $('btnExport');
+      const origText = exportBtn.querySelector('span') ? exportBtn.querySelector('span').textContent : 'Export';
+      if (exportBtn.querySelector('span')) exportBtn.querySelector('span').textContent = t('Exporting…');
+      exportBtn.disabled = true;
+      html2pdf().set(opt).from(el).save()
+        .then(() => {
+          if (exportBtn.querySelector('span')) exportBtn.querySelector('span').textContent = origText;
+          exportBtn.disabled = false;
+        })
+        .catch((err) => {
+          console.error('PDF export error:', err);
+          if (exportBtn.querySelector('span')) exportBtn.querySelector('span').textContent = origText;
+          exportBtn.disabled = false;
+          alert(t('PDF export failed'));
+        });
+    });
+
+    function setLoading(on) {
+      const txt = on ? t('Analyzing…') : t('Analyze');
+      $('btnText').textContent = txt;
+      $('btnSpinner').classList.toggle('hidden', !on);
+      btnAnalyze.disabled = on;
+      if (on) $('srAnnouncer').textContent = t('Analyzing…');
+    }
+
+    // Theme toggle
+    const themeToggle = $('themeToggle');
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+      themeToggle.setAttribute('aria-pressed', theme === 'light' ? 'true' : 'false');
+      // Re-render charts if they exist
+      if (Object.keys(charts).length > 0 && lastTimeseries) {
+        renderCharts(lastTimeseries);
+      }
+    }
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      setTheme(current === 'dark' ? 'light' : 'dark');
+    }
+    themeToggle.addEventListener('click', toggleTheme);
+    // Init theme from localStorage
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    themeToggle.setAttribute('aria-pressed', savedTheme === 'light' ? 'true' : 'false');
+
+    // Tabs — click + ArrowLeft/ArrowRight keyboard navigation
+    function activateTab(btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('tab-active'); b.classList.add('border-transparent'); b.setAttribute('aria-selected', 'false'); b.setAttribute('tabindex', '-1'); });
+      btn.classList.add('tab-active'); btn.classList.remove('border-transparent'); btn.setAttribute('aria-selected', 'true'); btn.setAttribute('tabindex', '0');
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+      $('tab-' + btn.dataset.tab).classList.remove('hidden');
+    }
+    document.querySelectorAll('.tab-btn').forEach((btn, idx, all) => {
+      btn.setAttribute('tabindex', idx === 0 ? '0' : '-1');
+      btn.addEventListener('click', () => { activateTab(btn); });
+      btn.addEventListener('keydown', e => {
+        const tabs = [...all];
+        const cur = tabs.indexOf(btn);
+        if (e.key === 'ArrowRight') { e.preventDefault(); const next = tabs[(cur + 1) % tabs.length]; activateTab(next); next.focus(); }
+        if (e.key === 'ArrowLeft')  { e.preventDefault(); const prev = tabs[(cur - 1 + tabs.length) % tabs.length]; activateTab(prev); prev.focus(); }
+        if (e.key === 'Home') { e.preventDefault(); activateTab(tabs[0]); tabs[0].focus(); }
+        if (e.key === 'End')  { e.preventDefault(); activateTab(tabs[tabs.length-1]); tabs[tabs.length-1].focus(); }
+      });
+    });
+
+    // Helpers
+    function gradeIcon(s) {
+      if (s === '◎') return `<span class="grade-excellent text-lg">&#9679;</span>`;
+      if (s === '○') return `<span class="grade-good text-lg">&#9679;</span>`;
+      if (s === '▲') return `<span class="grade-warning text-lg">&#9650;</span>`;
+      if (s === '×') return `<span class="grade-danger text-lg">&#10005;</span>`;
+      return `<span class="grade-na text-lg">&#8212;</span>`;
+    }
+    function fmtNum(v, d = 2, s = '') { if (v === null || v === undefined || isNaN(v)) return t('No Data'); return Number(v).toFixed(d) + s; }
+    function fmt5Y(val, decimals, unit) {
+      if (val !== undefined && val !== null && !isNaN(val)) return `5Y: ${fmtNum(val, decimals)}${unit}`;
+      return '';  // データがない場合は空文字を返す
+    }
+
+    // 指標情報マップ（計算式・評価基準を二言語で定義）
+    const metricInfoMap = {
+      'ROE': {
+        formula: { ja: 'ROE (%) = 当期純利益 ÷ 自己資本 × 100', en: 'ROE (%) = Net Income ÷ Shareholders\' Equity × 100' },
+        criteria: { ja: '◎: ROE 15%以上 かつ 5年成長 / ○: 10%以上 / ▲: 0%以上 / ×: 0%未満。業種中央値がある場合は相対比較。', en: '◎: ROE ≥15% with 5Y growth / ○: ≥10% / ▲: ≥0% / ×: <0%. Relative to industry median when available.' }
+      },
+      'ROA': {
+        formula: { ja: 'ROA (%) = 当期純利益 ÷ 総資産 × 100', en: 'ROA (%) = Net Income ÷ Total Assets × 100' },
+        criteria: { ja: '業種中央値との相対比較。◎: 中央値×1.5倍以上 / ○: 1.0倍以上 / ▲: 0.5倍以上 / ×: 0.5倍未満', en: 'Relative to industry median. ◎: ≥1.5× median / ○: ≥1.0× / ▲: ≥0.5× / ×: <0.5×' }
+      },
+      '配当利回り': {
+        formula: { ja: '配当利回り (%) = 1株当たり配当金 ÷ 株価 × 100', en: 'Dividend Yield (%) = DPS ÷ Stock Price × 100' },
+        criteria: { ja: '◎: 4%以上 / ○: 2%以上 / ▲: 1%以上 / ×: 1%未満', en: '◎: ≥4% / ○: ≥2% / ▲: ≥1% / ×: <1%' }
+      },
+      '配当性向': {
+        formula: { ja: '配当性向 (%) = 配当金総額 ÷ 当期純利益 × 100', en: 'Payout Ratio (%) = Total Dividends ÷ Net Income × 100' },
+        criteria: { ja: '◎: 20〜50%（持続可能な水準） / ○: 50〜70% / ▲: 70〜100% / ×: 100%超または0%', en: '◎: 20–50% (sustainable) / ○: 50–70% / ▲: 70–100% / ×: >100% or 0%' }
+      },
+      '自己資本比率': {
+        formula: { ja: '自己資本比率 (%) = 自己資本 ÷ 総資産 × 100', en: 'Equity Ratio (%) = Shareholders\' Equity ÷ Total Assets × 100' },
+        criteria: { ja: '◎: 50%以上 / ○: 35%以上 / ▲: 20%以上 / ×: 20%未満。業種平均がある場合は相対基準に切り替わります。', en: '◎: ≥50% / ○: ≥35% / ▲: ≥20% / ×: <20%. Switches to relative benchmark when industry data available.' }
+      },
+      '当座比率': {
+        formula: { ja: '当座比率 (%) = (流動資産 − 棚卸資産) ÷ 流動負債 × 100', en: 'Quick Ratio (%) = (Current Assets − Inventory) ÷ Current Liabilities × 100' },
+        criteria: { ja: '◎: 150%以上 / ○: 100%以上 / ▲: 75%以上 / ×: 75%未満', en: '◎: ≥150% / ○: ≥100% / ▲: ≥75% / ×: <75%' }
+      },
+      '流動比率': {
+        formula: { ja: '流動比率 (%) = 流動資産 ÷ 流動負債 × 100', en: 'Current Ratio (%) = Current Assets ÷ Current Liabilities × 100' },
+        criteria: { ja: '◎: 200%以上 / ○: 120〜200% / ▲: 100〜120% / ×: 100%未満', en: '◎: ≥200% / ○: 120–200% / ▲: 100–120% / ×: <100%' }
+      },
+      '売上高推移': {
+        formula: { ja: '5年CAGR (%) = (最新売上 ÷ 5年前売上)^(1/5) − 1', en: '5Y CAGR (%) = (Latest Revenue ÷ Revenue 5Y Ago)^(1/5) − 1' },
+        criteria: { ja: '◎: 5年CAGR 10%以上 かつ 5年連続増加 / ○: 5%以上 / ▲: 0%以上 / ×: 0%未満', en: '◎: 5Y CAGR ≥10% with consecutive growth / ○: ≥5% / ▲: ≥0% / ×: <0%' }
+      },
+      'EPS推移': {
+        formula: { ja: 'EPS (円) = 当期純利益 ÷ 発行済株式数', en: 'EPS = Net Income ÷ Shares Outstanding' },
+        criteria: { ja: '◎: 5年成長率 10%以上 かつ 5年連続増加 / ○: 5%以上 / ▲: 0%以上 / ×: 0%未満', en: '◎: 5Y growth ≥10% with consecutive increase / ○: ≥5% / ▲: ≥0% / ×: <0%' }
+      },
+      'EBITDA Margin': {
+        formula: { ja: 'EBITDAマージン (%) = EBITDA ÷ 売上高 × 100<br>EBITDA = 営業利益 + 減価償却費 + 償却費', en: 'EBITDA Margin (%) = EBITDA ÷ Revenue × 100<br>EBITDA = Operating Income + D&A' },
+        criteria: { ja: '◎: 20%以上 / ○: 10%以上 / ▲: 5%以上 / ×: 5%未満。業種平均がある場合は相対基準。', en: '◎: ≥20% / ○: ≥10% / ▲: ≥5% / ×: <5%. Relative to industry when available.' }
+      },
+      '営業利益率': {
+        formula: { ja: '営業利益率 (%) = 営業利益 ÷ 売上高 × 100', en: 'Operating Margin (%) = Operating Income ÷ Revenue × 100' },
+        criteria: { ja: '◎: 15%以上 / ○: 5%以上 / ▲: 3%以上 / ×: 3%未満。業種平均がある場合は相対基準。', en: '◎: ≥15% / ○: ≥5% / ▲: ≥3% / ×: <3%. Relative to industry when available.' }
+      },
+      'Debt/FCF': {
+        formula: { ja: 'Debt/FCF (倍) = 有利子負債 ÷ フリーキャッシュフロー', en: 'Debt/FCF (×) = Total Debt ÷ Free Cash Flow' },
+        criteria: { ja: '◎: 3倍未満 / ○: 5倍未満 / ▲: 10倍未満 / ×: 10倍以上または負値', en: '◎: <3× / ○: <5× / ▲: <10× / ×: ≥10× or negative' }
+      },
+      'EV/FCF': {
+        formula: { ja: 'EV/FCF (倍) = 企業価値 (EV) ÷ フリーキャッシュフロー<br>EV = 時価総額 + 有利子負債 − 現金', en: 'EV/FCF (×) = Enterprise Value ÷ Free Cash Flow<br>EV = Market Cap + Debt − Cash' },
+        criteria: { ja: '◎: 15倍未満 / ○: 25倍未満 / ▲: 40倍未満 / ×: 40倍以上または負値', en: '◎: <15× / ○: <25× / ▲: <40× / ×: ≥40× or negative' }
+      },
+      'P/E Ratio': {
+        formula: { ja: 'PER (倍) = 株価 ÷ 1株当たり利益 (EPS)', en: 'P/E Ratio (×) = Stock Price ÷ Earnings Per Share' },
+        criteria: { ja: '割安: 下限未満 / 適正: 下限〜上限 / 割高: 上限超。閾値は投資家プロファイルと業種平均から動的生成。', en: 'Undervalued: below lower bound / Fair: in range / Overvalued: above upper bound. Thresholds are dynamic.' }
+      },
+      'P/B Ratio': {
+        formula: { ja: 'PBR (倍) = 株価 ÷ 1株当たり純資産 (BPS)', en: 'P/B Ratio (×) = Stock Price ÷ Book Value Per Share' },
+        criteria: { ja: '割安: 下限未満 / 適正: 下限〜上限 / 割高: 上限超。閾値は投資家プロファイルと業種平均から動的生成。', en: 'Undervalued: below lower bound / Fair: in range / Overvalued: above upper bound. Thresholds are dynamic.' }
+      },
+      'Net Debt / EBITDA': {
+        formula: { ja: '純有利子負債/EBITDA (倍) = (有利子負債 − 現金) ÷ EBITDA', en: 'Net Debt / EBITDA (×) = (Total Debt − Cash) ÷ EBITDA' },
+        criteria: { ja: '◎: 1倍未満 / ○: 3倍未満 / ▲: 5倍未満 / ×: 5倍以上。低いほど財務的余裕が高い。', en: '◎: <1× / ○: <3× / ▲: <5× / ×: ≥5×. Lower = more financial flexibility.' }
+      },
+      'ROIC': {
+        formula: { ja: 'ROIC (%) = NOPAT ÷ 投下資本 × 100<br>NOPAT = 営業利益 × (1 − 実効税率)', en: 'ROIC (%) = NOPAT ÷ Invested Capital × 100<br>NOPAT = Operating Income × (1 − Effective Tax Rate)' },
+        criteria: { ja: '◎: 15%以上 / ○: 8%以上 / ▲: WACCを超えている / ×: WACC未満', en: '◎: ≥15% / ○: ≥8% / ▲: Exceeds WACC / ×: Below WACC' }
+      },
+      'WACC': {
+        formula: { ja: 'WACC (%) = E/V × Ke + D/V × Kd × (1 − 実効税率)<br>Ke = リスクフリー + β × 株式リスクプレミアム', en: 'WACC (%) = E/V × Ke + D/V × Kd × (1 − Tax Rate)<br>Ke = Risk-Free Rate + β × Equity Risk Premium' },
+        criteria: { ja: 'WACCは資本コストの基準。ROICがWACCを上回るほど価値創造企業。', en: 'WACC is the cost of capital hurdle rate. Value is created when ROIC exceeds WACC.' }
+      },
+      'ROIC vs WACC': {
+        formula: { ja: 'スプレッド (pt) = ROIC − WACC', en: 'Spread (pt) = ROIC − WACC' },
+        criteria: { ja: '◎: スプレッド 5pt以上 / ○: 0pt以上（価値創造） / ×: 0pt未満（価値毀損）', en: '◎: Spread ≥5pt / ○: ≥0pt (value creating) / ×: <0pt (value destroying)' }
+      },
+      'CCC': {
+        formula: { ja: 'CCC (日) = DSO + DIO − DPO<br>DSO: 売上債権回転日数 / DIO: 棚卸資産回転日数 / DPO: 買掛金回転日数', en: 'CCC (days) = DSO + DIO − DPO<br>DSO: Days Sales Outstanding / DIO: Days Inventory Outstanding / DPO: Days Payable Outstanding' },
+        criteria: { ja: '◎: 30日未満 / ○: 60日未満 / ▲: 90日未満 / ×: 90日以上。低いほど運転資本効率が高い。', en: '◎: <30 days / ○: <60 days / ▲: <90 days / ×: ≥90 days. Lower = better working capital efficiency.' }
+      },
+      'DSO': {
+        formula: { ja: 'DSO (日) = 売上債権 ÷ 売上高 × 365', en: 'DSO (days) = Accounts Receivable ÷ Revenue × 365' },
+        criteria: { ja: '日数が短いほど回収が早く、資金効率が良い。', en: 'Lower days = faster collection, better cash efficiency.' }
+      },
+      'DIO': {
+        formula: { ja: 'DIO (日) = 棚卸資産 ÷ 売上原価 × 365', en: 'DIO (days) = Inventory ÷ COGS × 365' },
+        criteria: { ja: '日数が短いほど在庫回転が速く、資金効率が良い。', en: 'Lower days = faster inventory turnover, better cash efficiency.' }
+      },
+      'DPO': {
+        formula: { ja: 'DPO (日) = 買掛金 ÷ 売上原価 × 365', en: 'DPO (days) = Accounts Payable ÷ COGS × 365' },
+        criteria: { ja: '日数が長いほど支払い猶予が長く、手元資金を長く保持できる。', en: 'Higher days = longer payment terms, more cash on hand.' }
+      },
+      '営業CF推移': {
+        formula: { ja: '営業CF = 本業での資金創出。純利益に非現金項目を調整したもの。', en: 'Operating CF = Cash generated from core operations. Net income adjusted for non-cash items.' },
+        criteria: { ja: '◎: 5年連続プラス かつ 成長 / ○: 直近プラス / ▲: ゼロ近辺 / ×: マイナス継続', en: '◎: Consistently positive & growing / ○: Recently positive / ▲: Near zero / ×: Persistently negative' }
+      },
+      'FCF推移': {
+        formula: { ja: 'FCF = 営業CF − 設備投資(CapEx)<br>株主への還元や成長投資の源泉。', en: 'FCF = Operating CF − Capital Expenditure<br>Source for shareholder returns and growth investments.' },
+        criteria: { ja: '◎: 5年CAGR 10%以上 かつ 連続増加 / ○: 5%以上 / ▲: 0%以上 / ×: 0%未満', en: '◎: 5Y CAGR ≥10% with consecutive growth / ○: ≥5% / ▲: ≥0% / ×: <0%' }
+      },
+      '投資CF推移': {
+        formula: { ja: '投資CF = 設備投資・M&A等による資金流出入。通常はマイナスが健全。', en: 'Investing CF = Cash used for capex, M&A, etc. Typically negative in healthy growing firms.' },
+        criteria: { ja: '健全型: 安定したマイナス（事業投資継続）/ 要注意: 大幅なプラス（資産売却）または急増するマイナス', en: 'Healthy: Stable negative (ongoing investment) / Warning: Large positive (asset sales) or rapidly increasing outflows' }
+      },
+      '財務CF推移': {
+        formula: { ja: '財務CF = 借入・社債・増資・配当・自社株買い等による資金流出入。', en: 'Financing CF = Cash from debt, equity issuances, dividends, buybacks, etc.' },
+        criteria: { ja: '成熟企業ではマイナス（株主還元・借入返済）が多い。急激な変化に注意。', en: 'Mature firms typically show negative CF (shareholder returns, debt repayment). Watch for sudden shifts.' }
+      },
+      '経営陣変更': {
+        formula: { ja: '評価軸: 直近の経営陣交代・ガバナンス上の問題の有無', en: 'Criterion: Recent management turnover or governance issues' },
+        criteria: { ja: '○: 問題なし / ▲: 要監視 / ×: 重大リスク確認', en: '○: No issues / ▲: Monitor / ×: Critical risk identified' }
+      },
+      '株主構造': {
+        formula: { ja: '評価軸: 機関投資家比率・大株主の安定性・ガバナンス透明性', en: 'Criterion: Institutional ownership %, major shareholder stability, governance transparency' },
+        criteria: { ja: '○: 機関投資家50%以上（透明性高） / ▲: 20〜50% / ×: 20%未満', en: '○: Institutional ownership ≥50% (high transparency) / ▲: 20–50% / ×: <20%' }
+      },
+      'ESG / 規制リスク': {
+        formula: { ja: '評価軸: ESGリスクスコア（Sustainalytics基準）', en: 'Criterion: ESG Risk Score (Sustainalytics standard)' },
+        criteria: { ja: '○: スコア20未満（低リスク） / ▲: 20〜30（中リスク） / ×: 30以上（高リスク）', en: '○: Score <20 (Low risk) / ▲: 20–30 (Medium) / ×: ≥30 (High risk)' }
+      },
+    };
+
+    // ラベル → 安定キー のマッピング（JA・EN両方から引ける）
+    const LABEL_TO_KEY = {
+      'ROE': 'ROE', 'ROA': 'ROA',
+      '配当利回り': '配当利回り', 'Dividend Yield': '配当利回り',
+      '配当性向': '配当性向', 'Payout Ratio': '配当性向',
+      '自己資本比率': '自己資本比率', 'Equity Ratio': '自己資本比率',
+      '当座比率': '当座比率', 'Quick Ratio': '当座比率',
+      '流動比率': '流動比率', 'Current Ratio': '流動比率',
+      '売上高推移': '売上高推移', 'Revenue Trend': '売上高推移',
+      'EPS推移': 'EPS推移', 'EPS Trend': 'EPS推移',
+      'EBITDA Margin': 'EBITDA Margin', 'EBITDAマージン': 'EBITDA Margin',
+      '営業利益率': '営業利益率', 'Operating Margin': '営業利益率',
+      'Debt/FCF': 'Debt/FCF',
+      'EV/FCF': 'EV/FCF',
+      'P/E Ratio': 'P/E Ratio', 'PER（株価収益率）': 'P/E Ratio',
+      'P/B Ratio': 'P/B Ratio', 'PBR（株価純資産倍率）': 'P/B Ratio',
+      'Net Debt / EBITDA': 'Net Debt / EBITDA', '純有利子負債 / EBITDA': 'Net Debt / EBITDA',
+      'ROIC': 'ROIC',
+      'WACC': 'WACC',
+      'ROIC vs WACC': 'ROIC vs WACC',
+      'CCC': 'CCC', 'DSO': 'DSO', 'DIO': 'DIO', 'DPO': 'DPO',
+      '営業CF推移': '営業CF推移', 'Operating CF Trend': '営業CF推移',
+      'FCF推移': 'FCF推移', 'FCF Trend': 'FCF推移',
+      '投資CF推移': '投資CF推移', 'Investing CF Trend': '投資CF推移',
+      '財務CF推移': '財務CF推移', 'Financing CF Trend': '財務CF推移',
+      '経営陣変更': '経営陣変更', 'Management Changes': '経営陣変更',
+      '株主構造': '株主構造', 'Shareholder Structure': '株主構造',
+      'ESG / 規制リスク': 'ESG / 規制リスク', 'ESG / Regulatory Risk': 'ESG / 規制リスク',
+    };
+
+    function showEvaluationCriteria(metricLabel) {
+      const stableKey = LABEL_TO_KEY[metricLabel] || metricLabel;
+      const info = metricInfoMap[stableKey];
+      const dynCriteria = evaluationCriteria[stableKey];
+      if (!info && !dynCriteria) return;
+
+      const modal = document.getElementById('criteriaModal');
+      const modalTitle = document.getElementById('criteriaTitle');
+      const modalContent = document.getElementById('criteriaContent');
+      modalTitle.textContent = metricLabel;
+
+      const lang = currentLang === 'ja' ? 'ja' : 'en';
+      let html = '';
+
+      if (info && info.formula) {
+        html += `<div class="mb-3 pb-3 border-b" style="border-color:var(--border)">
+          <p class="text-xs font-bold th-text-m uppercase mb-1">${t('計算式')}</p>
+          <p class="text-sm th-text-s">${info.formula[lang] || info.formula.ja}</p>
+        </div>`;
+      }
+
+      const criteriaText = info && info.criteria ? (info.criteria[lang] || info.criteria.ja) : null;
+      if (criteriaText) {
+        html += `<div class="mb-2">
+          <p class="text-xs font-bold th-text-m uppercase mb-1">${t('評価基準')}</p>
+          <p class="text-sm th-text-s">${criteriaText}</p>
+        </div>`;
+      }
+
+      if (dynCriteria && dynCriteria.業種中央値 !== undefined) {
+        html += `<div class="mt-2 pt-2 border-t" style="border-color:var(--border)">
+          <p class="text-xs th-text-m">${t('基準値:')} ${dynCriteria.業種中央値.toFixed(1)}</p>
+        </div>`;
+      }
+
+      modalContent.innerHTML = html;
+      openModal('criteriaModal', null);
+    }
+
+    function makeItemCard(label, grade, value, detail, chartKey, basis, missingReason) {
+      const clickable = chartKey ? 'clickable-card' : '';
+      const onclick = chartKey ? `onclick="showItemChart('${chartKey}','${label}')"` : '';
+      // Industry benchmark
+      let benchHtml = '';
+      if (chartKey && lastBenchmark) {
+        const bm = getBenchmarkMap()[chartKey];
+        if (bm) {
+          let bv = lastBenchmark[bm.field];
+          if (bv !== undefined && bv !== null) {
+            if (bm.invert) bv = 1 - bv;
+            if (bm.multiply) bv = bv * bm.multiply;
+            const isPercent = bm.multiply;
+            const unit = isPercent ? '%' : 'x';
+            benchHtml = `<div class="mt-1"><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:rgba(59,130,246,0.15);color:#3b82f6">${t('Industry Avg')}: ${fmtNum(bv, isPercent ? 1 : 2)}${unit}</span></div>`;
+          }
+        }
+      }
+      // 欠損理由表示（評価が"未入力"の場合）
+      let missingHtml = '';
+      if ((grade === '未入力' || grade === 'N/A') && missingReason) {
+        missingHtml = `<div class="mt-1"><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:rgba(156,163,175,0.15);color:#9ca3af">${missingReason}</span></div>`;
+      }
+      // 評価軸（evaluation criteria）— "?" ボタン：安定キーで判定
+      const _stableKey = LABEL_TO_KEY[label] || label;
+      let basisHtml = '';
+      if (metricInfoMap[_stableKey] || evaluationCriteria[_stableKey]) {
+        basisHtml = `<div class="mt-1"><button class="text-[10px] px-2 py-0.5 rounded-full th-text-m hover:th-text-s" style="background:rgba(100,116,139,0.2);border:none;cursor:pointer" onclick="event.stopPropagation();showEvaluationCriteria('${label}')">?</button></div>`;
+      }
+      return `<div class="card-hover sortable-item flex items-center justify-between p-4 rounded-xl th-bg-1 border ${clickable}" style="border-color:var(--border)" draggable="true" ${onclick}>
+        <div class="flex items-center gap-3">
+          <span class="text-[10px] th-text-d cursor-grab drag-handle" style="margin-right:-4px">⠿</span>
+          ${gradeIcon(grade)}
+          <div><p class="text-sm font-medium th-text-s">${escapeHtml(label)}</p>${detail ? `<p class="text-[11px] th-text-m">${escapeHtml(detail)}</p>` : ''}${benchHtml}${missingHtml}${basisHtml}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          ${value !== undefined ? `<span class="text-sm font-bold th-text-s tabular-nums">${value}</span>` : ''}
+          ${chartKey ? '<span class="text-[10px] th-text-d">▸</span>' : ''}
+        </div>
+      </div>`;
+    }
+
+    function judgeBadge(j) {
+      if (!j || j === '未入力') return `<span class="text-[10px] px-1.5 py-0.5 rounded" style="background:rgba(156,163,175,0.15);color:#9ca3af">—</span>`;
+      if (j === '×') return `<span class="text-[10px] px-1.5 py-0.5 rounded" style="background:rgba(239,68,68,0.15);color:#ef4444">×</span>`;
+      if (j === '▲') return `<span class="text-[10px] px-1.5 py-0.5 rounded" style="background:rgba(245,158,11,0.15);color:#f59e0b">▲</span>`;
+      return `<span class="text-[10px] px-1.5 py-0.5 rounded" style="background:rgba(34,197,94,0.15);color:#22c55e">○</span>`;
+    }
+    function makeSectionScore(el, label, weight, eval_text, score, subItems) {
+      const isDanger = eval_text.includes('×'), isWarn = eval_text.includes('▲');
+      const accent = isDanger ? '#ef4444' : (isWarn ? '#f59e0b' : '#22c55e');
+      const maxScore = parseInt(weight) * 5;
+      const pct = Math.min((score / maxScore) * 100, 100);
+      const subHtml = (subItems || []).map(si =>
+        `<div class="flex items-center justify-between py-1">
+          <span class="text-[10px] th-text-s">${si.label}</span>
+          ${judgeBadge(si.judge)}
+        </div>`
+      ).join('');
+      el.innerHTML = `<div class="th-bg-1 border rounded-xl p-5 h-full" style="border-color:var(--border)">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-[10px] font-bold uppercase tracking-[0.15em] th-text-m">${label}</span>
+          <span class="text-2xl font-black tabular-nums" style="color:${accent}">${fmtNum(score, 1)}</span>
+        </div>
+        <div class="metric-bar mb-2"><div class="metric-bar-fill" style="width:${pct}%; background:${accent}"></div></div>
+        <p class="text-[11px] th-text-m mb-2">${t(eval_text)}</p>
+        ${subHtml ? `<div class="border-t pt-2 mt-1" style="border-color:var(--border)">${subHtml}</div>` : ''}
+        <p class="text-[10px] th-text-m mt-1">${t('Weight:')} ${weight}</p>
+      </div>`;
+    }
+
+    function renderDashboard(data) {
+      lastData = data;
+      uploadSection.classList.add('hidden'); dashboard.classList.remove('hidden'); btnReset.classList.remove('hidden'); $('btnExport').classList.remove('hidden');
+      window.scrollTo(0, 0);
+
+      // Set data scaling flags from timeseries metadata
+      isJPYData = data.timeseries && data.timeseries._is_jpy ? true : false;
+      dataUnitScale = data.timeseries && data.timeseries._unit_scale ? data.timeseries._unit_scale : null;
+      evaluationCriteria = data.evaluation_criteria || {};
+
+      // Set currency symbol — yfinance: auto from _currency / Excel: from user selector
+      const detectedCurrency = data.timeseries && data.timeseries._currency ? data.timeseries._currency : '';
+      if (detectedCurrency && CURRENCY_SYMBOLS[detectedCurrency]) {
+        currentCurrencyCode = detectedCurrency;
+        currentCurrencySymbol = CURRENCY_SYMBOLS[detectedCurrency];
+      } else {
+        // Excel without currency tag — use selector
+        const sel = $('inputCurrency');
+        currentCurrencyCode = sel ? sel.value : 'JPY';
+        currentCurrencySymbol = CURRENCY_SYMBOLS[currentCurrencyCode] || '¥';
+      }
+      // Show currency badge in dashboard header
+      const currBadge = $('currencyBadge');
+      if (currBadge) {
+        currBadge.textContent = currentCurrencySymbol + ' ' + currentCurrencyCode;
+        currBadge.classList.remove('hidden');
+      }
+
+      const s = data.screening, q = data.quantitative, r = data.roa_tree, re = data.roe_tree;
+
+      $('companyName').textContent = data.company || 'Untitled';
+      $('tickerBadge').textContent = data.ticker || '—';
+      $('industryBadge').textContent = data.industry || '';
+
+      // Profile badge
+      const profBadge = $('profileBadge');
+      if (profBadge && data.investor_profile) {
+        profBadge.textContent = data.investor_profile.name_en;
+        profBadge.title = data.investor_profile.description_ja;
+        profBadge.classList.remove('hidden');
+      }
+
+      const verdict = s['最終投資判定'];
+      const vc = $('verdictCard');
+      vc.className = 'text-center px-10 py-5 rounded-2xl text-white ' + (verdict === 'BUY' ? 'verdict-buy' : (verdict === 'HOLD' ? 'verdict-hold' : 'verdict-sell glow-red'));
+      $('verdictText').textContent = verdict;
+      $('verdictScore').textContent = `Risk Score ${fmtNum(s['総合スコア'], 1)}`;
+
+      makeSectionScore($('scoreA'), t('A — Financial Health'), '★★★★★', s['SectionA評価'], s['SectionAスコア'], [
+        { label: t('自己資本比率'), judge: (s['A-1_自己資本比率']||{})['判定'] },
+        { label: t('営業CF'), judge: (s['A-2_営業CF']||{})['判定'] },
+        { label: 'ROE / ROA', judge: (s['A-3_ROE_ROA']||{})['判定'] },
+      ]);
+      makeSectionScore($('scoreB'), t('B — Growth'), '★★★★', s['SectionB評価'], s['SectionBスコア'], [
+        { label: t('売上高 CAGR'), judge: (s['B-1_売上高CAGR']||{})['判定'] },
+        { label: t('EBITDA Margin'), judge: (s['B-2_EBITDAマージン']||{})['判定'] },
+        { label: t('営業利益率'), judge: (s['B-3_営業利益率']||{})['判定'] },
+        { label: t('EPS Growth'), judge: (s['B-4_EPS成長率']||{})['判定'] },
+      ]);
+      makeSectionScore($('scoreC'), t('C — Valuation'), '★★★', s['SectionC評価'], s['SectionCスコア'], [
+        { label: 'PER', judge: (s['C-1_PER']||{})['判定'] },
+        { label: 'PBR', judge: (s['C-2_PBR']||{})['判定'] },
+        { label: 'Net Debt/EBITDA', judge: (s['C-3_NetDebt_EBITDA']||{})['判定'] },
+        { label: t('流動比率'), judge: (s['C-4_流動比率']||{})['判定'] },
+      ]);
+      makeSectionScore($('scoreD'), t('D — ESG'), '★★', s['SectionD評価'], s['SectionDスコア'], [
+        { label: t('経営陣変更'), judge: (s['D-1_経営陣変更']||{})['判定'] },
+        { label: t('株主構造'), judge: (s['D-2_株主構造']||{})['判定'] },
+        { label: t('ESG / 規制リスク'), judge: (s['D-3_ESG']||{})['判定'] },
+      ]);
+
+      // Merged Analysis tab
+      const eqItem = s['A-1_自己資本比率']||{};
+      const cfItem = s['A-2_営業CF']||{};
+      const qRoe = q['ROE']||{}, qRoa = q['ROA']||{};
+      const qCf = q['営業CF']||{};
+
+      // Performance (ROE, ROA, Dividend Yield, Payout Ratio)
+      const a3Item = s['A-3_ROE_ROA']||{};
+      const qDy = q['配当利回り']||{}, qPo = q['配当性向']||{};
+      $('perfItems').innerHTML = [
+        makeItemCard('ROE', qRoe['評価'], qRoe['現在値']!==undefined?(qRoe['data_warning']?'⚠️ ':'')+fmtNum(qRoe['現在値'],1,'%'):'', fmt5Y(qRoe['5年変化pt'],1,'pt'), 'roe', a3Item['基準']),
+        makeItemCard('ROA', qRoa['評価'], qRoa['現在値']!==undefined?(qRoa['data_warning']?'⚠️ ':'')+fmtNum(qRoa['現在値'],1,'%'):'', fmt5Y(qRoa['5年変化pt'],1,'pt'), 'roa'),
+        qDy['現在値'] !== undefined ? makeItemCard(t('配当利回り'), qDy['評価'], fmtNum(qDy['現在値'],2,'%'), fmt5Y(qDy['5年変化pt'],2,'pt'), 'dividend_yield') : '',
+        qPo['現在値'] !== undefined ? makeItemCard(t('配当性向'), qPo['評価'], fmtNum(qPo['現在値'],1,'%'), fmt5Y(qPo['5年変化pt'],1,'pt'), 'payout_ratio') : '',
+      ].filter(Boolean).join('');
+
+      // Financial Health (equity, liquidity)
+      const qEq = q['自己資本比率']||{}, qQr = q['当座比率']||{}, qCr = q['流動比率']||{};
+      $('healthItems').innerHTML = [
+        makeItemCard(t('自己資本比率'), eqItem['判定'], fmtNum(eqItem['実績値'],1,'%'), fmt5Y(qEq['5年変化pt'],1,'pt'), 'equity_ratio', eqItem['基準']),
+        makeItemCard(t('当座比率'), qQr['評価'], fmtNum(qQr['現在値'],1,'%'), fmt5Y(qQr['5年変化pt'],1,'pt'), 'quick_ratio'),
+        makeItemCard(t('流動比率'), qCr['評価'], fmtNum(qCr['現在値'],1,'%'), fmt5Y(qCr['5年変化pt'],1,'pt'), 'current_ratio', (s['C-4_流動比率']||{})['基準']),
+      ].join('');
+
+      // Growth & Profitability
+      const b1 = s['B-1_売上高CAGR']||{}, b2 = s['B-2_EBITDAマージン']||{}, b3 = s['B-3_営業利益率']||{}, b4 = s['B-4_EPS成長率']||{};
+      const qRev = q['売上高推移']||{}, qFcf = q['FCF推移']||{}, qEps = q['EPS推移']||{};
+      $('growthItems').innerHTML = [
+        makeItemCard(t('売上高推移'), qRev['評価'], qRev['最新値']!==undefined?(qRev['data_warning']?'⚠️ ':'')+smartFormat(qRev['最新値']):'', fmt5Y(qRev['5年変化率'],1,'%'), 'revenue', b1['基準'], qRev['欠損理由']),
+        makeItemCard(t('EPS推移'), qEps['評価'], qEps['最新値']!==undefined?fmtNum(qEps['最新値'],1)+' '+t('円'):'', fmt5Y(qEps['5年変化率'],1,'%'), 'eps', b4['基準'], qEps['欠損理由']),
+        makeItemCard(t('EBITDA Margin'), b2['判定'], fmtNum(b2['実績値'],1,'%'), fmt5Y((q['EBITDAマージン']||{})['5年変化pt'],1,'pt'), 'ebitda', b2['基準']),
+        makeItemCard(t('営業利益率'), b3['判定'], typeof b3['状況']==='number'?(b3['data_warning']?'⚠️ ':'')+fmtNum(b3['状況'],1,'%'):(b3['状況']||'—'), fmt5Y((q['営業利益率Q']||{})['5年変化pt'],1,'pt'), 'op_margin', b3['基準']),
+      ].join('');
+
+      // Valuation & Risk (from screening C + quantitative risk)
+      const c1 = s['C-1_PER']||{}, c2 = s['C-2_PBR']||{}, c3 = s['C-3_NetDebt_EBITDA']||{}, c4 = s['C-4_流動比率']||{};
+      const qDfc = q['Debt/FCF']||{}, qEvf = q['EV/FCF']||{};
+      $('valuationItems').innerHTML = [
+        makeItemCard(t('P/E Ratio'), c1['判定'], fmtNum(c1['実績値'],1,'x'), `${t('Range:')} ${c1['閾値_下限']}–${c1['閾値_上限']}`, 'pe_ratio', c1['基準']),
+        makeItemCard(t('P/B Ratio'), c2['判定'], fmtNum(c2['実績値'],2,'x'), `${t('Range:')} ${c2['閾値_下限']}–${c2['閾値_上限']}`, 'pb_ratio', c2['基準']),
+        makeItemCard(t('Net Debt / EBITDA'), c3['判定'], fmtNum(c3['実績値'],2,'x'), '', 'nd_ebitda', c3['基準']),
+        makeItemCard('Debt/FCF', qDfc['評価'], fmtNum(qDfc['現在値'],2), fmt5Y((q['Debt/FCF_detail']||{})['5年変化'],2,''), 'debt_fcf'),
+        makeItemCard('EV/FCF', qEvf['評価'], fmtNum(qEvf['現在値'],2), ''),
+      ].join('');
+
+      // ROIC / WACC
+      $('roicItems').innerHTML = ['ROIC','WACC','ROIC_vs_WACC'].map(k => {
+        const v=q[k]||{}; let val='', detail='';
+        if(k==='ROIC') { val=fmtNum(v['ROIC'],1,'%'); detail=fmt5Y(v['ROIC_5年変化pt'],1,'pt'); }
+        else if(k==='WACC') { val=fmtNum(v['現在値'],1,'%'); detail=''; }
+        else { val=fmtNum(v['スプレッド'],1,'pt'); detail=''; }
+        const ck = k==='ROIC' ? 'roic' : null;
+        return makeItemCard(t(k.replace(/_/g,' ')), v['評価'], val, detail, ck);
+      }).join('');
+
+      // CCC
+      const ccc=q['CCC分析']||{};
+      if (ccc['評価'] === 'N/A') {
+        $('cccItems').innerHTML = makeItemCard('CCC', 'N/A', '', '', null, null, ccc['欠損理由']);
+      } else {
+        $('cccItems').innerHTML = [makeItemCard('CCC',ccc['評価'],fmtNum(ccc['CCC'],1,'d'),null,null,null,ccc['欠損理由']), makeItemCard('DSO',null,fmtNum(ccc['DSO'],1,'d')), makeItemCard('DIO',null,fmtNum(ccc['DIO'],1,'d')), makeItemCard('DPO',null,fmtNum(ccc['DPO'],1,'d'))].join('');
+      }
+
+      // CF Analysis (with pattern judgment merged)
+      const qInv = q['投資CF']||{}, qFin = q['財務CF']||{};
+      const cfPat = q['CF構成分析']||{};
+      const patIcon = cfPat['理想型'] ? '◎' : '⚠';
+      const patColor = cfPat['理想型'] ? '#22c55e' : '#f59e0b';
+      $('cfItems').innerHTML = [
+        makeItemCard(t('営業CF推移'), qCf['評価']||cfItem['判定'], qCf['最新値']!==undefined?smartFormat(qCf['最新値']):(cfItem['状況']||'—'), fmt5Y(qCf['5年変化率'],1,'%'), 'ocf', cfItem['基準']),
+        makeItemCard(t('FCF推移'), qFcf['評価'], qFcf['最新値']!==undefined?smartFormat(qFcf['最新値']):'', fmt5Y(qFcf['5年変化率'],1,'%'), 'fcf', undefined, qFcf['欠損理由']),
+        makeItemCard(t('投資CF推移'), qInv['評価'], qInv['最新値']!==undefined?smartFormat(qInv['最新値']):'', fmt5Y(qInv['5年変化率'],1,'%'), 'investing_cf'),
+        makeItemCard(t('財務CF推移'), qFin['評価'], qFin['最新値']!==undefined?smartFormat(qFin['最新値']):'', fmt5Y(qFin['5年変化率'],1,'%'), 'financing_cf'),
+        `<div class="flex items-center justify-between p-4 rounded-xl th-bg-1 border mt-3" style="border-color:var(--border)">
+          <div class="flex items-center gap-3">
+            <span class="text-lg" style="color:${patColor}">${patIcon}</span>
+            <div>
+              <p class="text-sm font-bold th-text-s">${t('CF Pattern Result')}</p>
+              <p class="text-[11px] th-text-m">${t('cf-ideal-desc')}</p>
+            </div>
+          </div>
+          <span class="text-sm font-bold" style="color:${patColor}">${cfPat['理想型'] ? t('Ideal') : t('Non-Ideal')}</span>
+        </div>`,
+      ].join('');
+
+      // ESG
+      const d1Item = s['D-1_経営陣変更']||{}, d2Item = s['D-2_株主構造']||{}, d3Item = s['D-3_ESG']||{};
+      const ts = data.timeseries || {};
+      const analystConsensus = ts['_analyst_consensus'];
+      const analystBreakdown = ts['_analyst_breakdown'];
+      const analystTarget = ts['_analyst_target'];
+      const analystUpside = ts['_analyst_upside'];
+      let analystCard = '';
+      if (analystConsensus) {
+        const bdHtml = analystBreakdown
+          ? `${t('analyst-breakdown')}: ${analystBreakdown.buy}/${analystBreakdown.hold}/${analystBreakdown.sell}`
+          : '';
+        const targetHtml = analystTarget
+          ? ` | ${t('Target Price')}: ${fmtNum(analystTarget, 1)} ${analystUpside !== null && analystUpside !== undefined ? `(${analystUpside >= 0 ? '+' : ''}${fmtNum(analystUpside, 1)}%)` : ''}`
+          : '';
+        const consensusLabel = t(analystConsensus) || analystConsensus;
+        const consensusColor = analystConsensus === 'Strong Buy' ? '#22c55e'
+          : analystConsensus === 'Buy' ? '#86efac'
+          : analystConsensus === 'Sell' ? '#ef4444'
+          : '#f59e0b';
+        analystCard = `<div class="sortable-item flex items-center justify-between p-4 rounded-xl th-bg-1 border" style="border-color:var(--border)" draggable="true">
+          <div class="flex items-center gap-3">
+            <span class="text-[10px] th-text-d cursor-grab drag-handle" style="margin-right:-4px">⠿</span>
+            <span class="text-base" style="color:${consensusColor}">★</span>
+            <div>
+              <p class="text-sm font-medium th-text-s">${t('Analyst Consensus')}</p>
+              ${bdHtml ? `<p class="text-[11px] th-text-m">${bdHtml}${targetHtml}</p>` : ''}
+            </div>
+          </div>
+          <span class="text-sm font-bold tabular-nums" style="color:${consensusColor}">${consensusLabel}</span>
+        </div>`;
+      }
+      $('esgItems').innerHTML = [
+        makeItemCard(t('経営陣変更'), d1Item['判定'], undefined, undefined, undefined, d1Item['基準']),
+        makeItemCard(t('株主構造'), d2Item['判定'], undefined, undefined, undefined, d2Item['基準']),
+        makeItemCard(t('ESG / 規制リスク'), d3Item['判定'], undefined, undefined, undefined, d3Item['基準']),
+        analystCard,
+      ].filter(Boolean).join('');
+
+      if (re) renderROETree(re, r);
+      if (data.timeseries) { lastTimeseries = data.timeseries; renderCharts(data.timeseries); }
+      initSortable();
+    }
+
+    // Drag & Drop sorting within each analysis section
+    function initSortable() {
+      document.querySelectorAll('#tab-analysis .space-y-2').forEach(container => {
+        let dragEl = null;
+        container.addEventListener('dragstart', e => {
+          const item = e.target.closest('.sortable-item');
+          if (!item) return;
+          dragEl = item;
+          item.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', '');
+        });
+        container.addEventListener('dragend', e => {
+          if (dragEl) dragEl.classList.remove('dragging');
+          container.querySelectorAll('.sortable-item').forEach(el => el.classList.remove('drag-over'));
+          dragEl = null;
+        });
+        container.addEventListener('dragover', e => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          const target = e.target.closest('.sortable-item');
+          if (!target || target === dragEl) return;
+          container.querySelectorAll('.sortable-item').forEach(el => el.classList.remove('drag-over'));
+          target.classList.add('drag-over');
+        });
+        container.addEventListener('dragleave', e => {
+          const target = e.target.closest('.sortable-item');
+          if (target) target.classList.remove('drag-over');
+        });
+        container.addEventListener('drop', e => {
+          e.preventDefault();
+          const target = e.target.closest('.sortable-item');
+          if (!target || !dragEl || target === dragEl) return;
+          target.classList.remove('drag-over');
+          const items = [...container.querySelectorAll('.sortable-item')];
+          const dragIdx = items.indexOf(dragEl);
+          const dropIdx = items.indexOf(target);
+          if (dragIdx < dropIdx) {
+            target.after(dragEl);
+          } else {
+            target.before(dragEl);
+          }
+        });
+      });
+    }
+
+    function buildPBRContribution() {
+      const pbr = lastData ? lastData.pbr_contribution : null;
+
+      // データが不足していても、セクション自体は常に表示する
+      const upItems = pbr ? (pbr.up_ranking || []) : [];
+      const downItems = pbr ? (pbr.down_ranking || []) : [];
+      const hasData = upItems.length > 0 || downItems.length > 0;
+
+      // データ不足の警告メッセージ
+      const dataWarning = !hasData ? `
+        <div class="flex items-center justify-center gap-2 p-4 mb-4 border border-yellow-500/20 bg-yellow-500/5" style="border-radius:0">
+          <span class="text-yellow-400 text-lg">⚠</span>
+          <p class="text-xs th-text-m">${t('PBR貢献度分析データ不足')}</p>
+        </div>
+      ` : '';
+
+      const allItems = [...upItems, ...downItems];
+      const maxAbs = Math.max(...allItems.map(it => Math.abs(it['PBR寄与度'])), 0.001);
+
+      const buildRow = (item, isUp) => {
+        const pbrImpact = item['PBR寄与度'];
+        const roeContrib = item['ROE寄与度pt'];
+        const barWidth = maxAbs > 0 ? Math.min(Math.abs(pbrImpact) / maxAbs * 100, 100) : 0;
+        const color = isUp ? '#22c55e' : '#ef4444';
+        const bgColor = isUp ? 'bg-green-500/5 border-green-500/10' : 'bg-red-500/5 border-red-500/10';
+        const badgeColor = isUp ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400';
+        const textColor = isUp ? 'text-green-400' : 'text-red-400';
+        const arrow = isUp ? '&#9650;' : '&#9660;';
+        const catLabel = item['カテゴリ'] === 'ROE要因' ? 'ROE' : 'PER';
+        const catColor = item['カテゴリ'] === 'ROE要因' ? 'bg-blue-500/20 text-blue-400' : 'bg-brand/20 text-brand';
+        const roeText = roeContrib !== null ? `<p class="text-[10px] th-text-m tabular-nums">ROE ${roeContrib > 0 ? '+' : ''}${fmtNum(roeContrib,2)}pt</p>` : '';
+
+        return `<div class="flex items-center gap-4 p-4 border ${bgColor} transition-all hover:scale-[1.01]" style="border-radius:0">
+          <span class="w-8 h-8 flex items-center justify-center text-xs font-bold ${badgeColor}" style="border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">${item['順位']}</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-xs font-semibold th-text">${t(item['指標'])}</span>
+              <span class="text-[9px] px-1.5 py-0.5 ${catColor} font-bold tracking-wider" style="border-radius:0">${catLabel}</span>
+            </div>
+            <div class="w-full h-1.5 th-bg-3 overflow-hidden" style="border-radius:0">
+              <div class="h-full transition-all" style="width:${barWidth}%;background:${color};border-radius:0"></div>
+            </div>
+          </div>
+          <div class="text-right shrink-0 min-w-[120px]">
+            <p class="text-xs font-bold tabular-nums ${textColor}" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">${arrow} PBR ${pbrImpact > 0 ? '+' : ''}${fmtNum(pbrImpact,3)}x</p>
+            ${roeText}
+          </div>
+        </div>`;
+      };
+
+      const upRows = upItems.map(it => buildRow(it, true)).join('');
+      const downRows = downItems.map(it => buildRow(it, false)).join('');
+
+      // PBR evaluation badge
+      const pbrEval = pbr ? (pbr.pbr_eval || t('データなし')) : t('データなし');
+      const pbrRange = pbr ? (pbr.pbr_range || '—') : '—';
+      const pbrEvalColor = pbrEval === '割安' || pbrEval === t('割安') || pbrEval === 'やや割安' || pbrEval === t('やや割安') ? '#22c55e'
+        : pbrEval === '適正水準' || pbrEval === t('適正水準') ? '#3b82f6'
+        : pbrEval === 'やや割高' || pbrEval === t('やや割高') ? '#f59e0b'
+        : pbrEval === 'データなし' || pbrEval === t('データなし') ? '#9ca3af' : '#ef4444';
+      const pbrEvalBadge = `<div class="mt-2"><span class="text-[10px] px-3 py-1 font-bold tracking-wider uppercase" style="background:${pbrEvalColor}20;color:${pbrEvalColor};border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">${t(pbrEval)}</span><span class="text-[10px] th-text-m ml-2">${t('適正レンジ')}: ${pbrRange}</span></div>`;
+
+      // PBR 5Y change summary
+      const pbrChgVal = pbr ? pbr.pbr_change : null;
+      const pbrChgText = pbrChgVal !== null ? `PBR ${t('5Y Change:')} ${pbrChgVal > 0 ? '+' : ''}${fmtNum(pbrChgVal,2)}x` : t('PBR変化：データ不足');
+
+      return `
+        <div class="mt-12 pt-8 border-t" style="border-color:var(--border)">
+          <div class="text-center mb-6">
+            <p class="text-[10px] uppercase tracking-[0.2em] th-text-m mb-2">${t('PBR Driver Analysis')}</p>
+            <p class="text-lg font-bold th-text mb-1">${pbrChgText}</p>
+            <p class="text-xs th-text-m">PBR = ROE × PER / 100 — ${t('5年間の各要因がPBRに与えた影響を分解')}</p>
+            ${pbrEvalBadge}
+          </div>
+
+          ${dataWarning}
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <!-- Up factors -->
+            <div>
+              <div class="flex items-center gap-2 mb-4">
+                <span class="text-green-400 text-lg">&#9650;</span>
+                <span class="text-sm font-bold th-text">${t('PBR上昇要因')}</span>
+              </div>
+              <div class="space-y-3">${upRows || '<p class="text-xs th-text-d text-center py-4">—</p>'}</div>
+            </div>
+            <!-- Down factors -->
+            <div>
+              <div class="flex items-center gap-2 mb-4">
+                <span class="text-red-400 text-lg">&#9660;</span>
+                <span class="text-sm font-bold th-text">${t('PBR下落要因')}</span>
+              </div>
+              <div class="space-y-3">${downRows || '<p class="text-xs th-text-d text-center py-4">—</p>'}</div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function benchBadge(field, multiply, unit, invert) {
+      if (!lastBenchmark) return '';
+      let v = lastBenchmark[field];
+      if (v === undefined || v === null) return '';
+      if (invert) v = 1 - v;
+      if (multiply) v = v * multiply;
+      return `<span class="text-[9px] px-2 py-0.5 tracking-wider" style="background:rgba(59,130,246,0.15);color:#3b82f6;border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">${t('Industry Avg')}: ${fmtNum(v, unit === '%' ? 1 : 2)}${unit}</span>`;
+    }
+
+    function renderROETree(re, r) {
+      const node = (label, val, chg, grade, unit='', benchField, benchMul, benchInvert) => {
+        const clr = grade==='改善'?'#22c55e':(grade==='悪化'?'#ef4444':'#9ca3af');
+        const arrow = grade==='改善'?'&#9650;':(grade==='悪化'?'&#9660;':'');
+        const bb = benchField ? benchBadge(benchField, benchMul, unit, benchInvert) : '';
+        return `<div class="flex items-center justify-between p-3 th-bg-2 border mb-2" style="border-color:var(--border);border-radius:0">
+          <div class="flex items-center gap-2"><span class="text-[11px] font-medium th-text-s">${label}</span>${bb}</div>
+          <div class="flex items-center gap-3 tabular-nums">
+            <span class="text-xs font-bold th-text">${fmtNum(val,2)}${unit}</span>
+            ${chg!==null&&chg!==undefined?`<span class="text-[11px] font-semibold" style="color:${clr}">${arrow} ${fmtNum(chg,2)}</span>`:''}
+          </div></div>`;
+      };
+      const roe = re['ROE']||{};
+      const npm = re['純利益率']||{}, at = re['総資産回転率']||{}, em = re['財務レバレッジ']||{};
+      // PER/PBR from screening
+      const sc = lastData ? lastData.screening : {};
+      const perData = sc['C-1_PER']||{};
+      const pbrData = sc['C-2_PBR']||{};
+      const perVal = perData['実績値'];
+      const pbrVal = pbrData['実績値'];
+      const roeVal = roe['現在値'];
+      const pbrC = lastData ? lastData.pbr_contribution : {};
+      const perChg = pbrC.per_change;
+      const pbrChg = pbrC.pbr_change;
+
+      $('roeTree').innerHTML = `
+        <!-- ===== PBR = ROE × PER (top level) ===== -->
+        <div class="text-center mb-6">
+          <p class="text-[10px] uppercase tracking-[0.2em] th-text-m mb-2">${t('PBR Decomposition')}</p>
+          <div class="inline-block px-14 py-6 th-bg-2 border-2" style="border-color:var(--brand);border-radius:0">
+            <p class="text-[10px] uppercase tracking-[0.2em] th-text-m mb-1" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">PBR</p>
+            <p class="text-5xl font-bold tabular-nums" style="color:var(--brand);font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">${fmtNum(pbrVal,2)}<span class="text-2xl th-text-m">x</span></p>
+            <p class="text-xs mt-2">${pbrData['判定']==='○'?`<span class="text-green-500">${t('適正水準')}</span>`:pbrData['判定']==='◎'?`<span class="text-green-500">${t('割安')}</span>`:pbrData['判定']==='▲'?`<span class="text-amber-500">${t('やや割高')}</span>`:pbrData['判定']==='×'?`<span class="text-red-500">${t('割高')}</span>`:'<span class="th-text-m">—</span>'}</p>
+            <p class="text-[11px] th-text-m mt-1">${t('5Y Change:')} <span class="${pbrChg>0?'text-green-400':pbrChg<0?'text-red-400':'th-text-m'}">${pbrChg!==null?((pbrChg>0?'+':'')+fmtNum(pbrChg,2)+'x'):'—'}</span></p>
+            ${benchBadge('pbr', null, 'x')}
+          </div>
+        </div>
+        <div class="flex justify-center items-center gap-3 mb-8 text-sm th-text-m">
+          <span class="px-4 py-2 th-bg-2 border font-bold text-xs tracking-wider" style="border-color:var(--border);border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">PBR <strong class="th-text">${fmtNum(pbrVal,2)}x</strong></span>
+          <span class="text-lg">=</span>
+          <span class="px-4 py-2 th-bg-2 border font-bold text-xs tracking-wider cursor-pointer hover:border-brand/50 transition-all" style="border-color:var(--border);border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" onclick="showItemChart('roe','ROE')">ROE <strong class="th-text">${fmtNum(roeVal,1)}%</strong></span>
+          <span class="text-lg">&times;</span>
+          <span class="px-4 py-2 th-bg-2 border font-bold text-xs tracking-wider cursor-pointer hover:border-brand/50 transition-all" style="border-color:var(--border);border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif" onclick="showItemChart('pe_ratio','PER')">PER <strong class="th-text">${fmtNum(perVal,1)}x</strong></span>
+        </div>
+
+        <!-- ===== PER & ROE side by side ===== -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+          <!-- PER (Market Expectation) -->
+          <div class="p-6 th-bg-2 border" style="border-color:var(--border-s);border-radius:0">
+            <div class="flex items-center gap-2 mb-2">
+              <div class="w-3 h-3 bg-brand" style="border-radius:0"></div>
+              <span class="text-[10px] font-bold uppercase tracking-[0.18em] th-text-m" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">${t('Market Expectation')}</span>
+            </div>
+            <div class="flex items-baseline gap-2 mb-1">
+              <p class="text-3xl font-bold tabular-nums" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">${perVal !== null && perVal !== undefined ? fmtNum(perVal,1) : '—'}<span class="text-lg th-text-m">x</span></p>
+              <span id="perYearBadge" class="text-[9px] px-2 py-0.5 tracking-wider" style="background:rgba(213,0,28,0.15);color:#d5001c;border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif"></span>
+            </div>
+            <p class="text-[10px] th-text-m mb-2">${t('per-desc')}</p>
+            <div class="mb-2">${benchBadge('pe_aggregate_all', null, 'x')}</div>
+            <p class="text-[11px] th-text-m mb-3">${t('5Y Change:')} <span class="${perChg>0?'text-green-400':perChg<0?'text-red-400':'th-text-m'}">${perChg!==null?((perChg>0?'+':'')+fmtNum(perChg,1)+'x'):'—'}</span></p>
+            <div id="perChartContainer">
+              <canvas id="roetreePERChart" style="max-height:140px"></canvas>
+            </div>
+          </div>
+
+          <!-- ROE (Profitability) -->
+          <div class="p-6 th-bg-2 border" style="border-color:var(--border-s);border-radius:0">
+            <div class="flex items-center gap-2 mb-2">
+              <div class="w-3 h-3 bg-green-500" style="border-radius:0"></div>
+              <span class="text-[10px] font-bold uppercase tracking-[0.18em] th-text-m" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">${t('Profitability (ROE)')}</span>
+            </div>
+            <div class="flex items-baseline gap-2 mb-1">
+              <p class="text-3xl font-bold tabular-nums" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">${roeVal !== null && roeVal !== undefined ? fmtNum(roeVal,1) : '—'}<span class="text-lg th-text-m">%</span></p>
+              <span id="roeYearBadge" class="text-[9px] px-2 py-0.5 tracking-wider" style="background:rgba(34,197,94,0.15);color:#22c55e;border-radius:0;font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif"></span>
+            </div>
+            <p class="text-[10px] th-text-m mb-1">${t('roe-desc')}</p>
+            <div class="mb-1">${benchBadge(benchmarkRegion === 'japan' ? 'roe_japan' : 'roe_global', 100, '%')}</div>
+            <p class="text-[11px] th-text-m mb-3">${t('5Y Change:')} ${fmtNum(roe['5年変化pt'],1)}pt</p>
+            <div id="roeChartContainer">
+              <canvas id="roetreeROEChart" style="max-height:140px"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== ROE DuPont Decomposition ===== -->
+        <div class="mb-6">
+          <p class="text-[10px] uppercase tracking-[0.2em] th-text-m mb-2 text-center">${t('ROE DuPont Decomposition')}</p>
+          <div class="flex flex-wrap justify-center gap-x-4 gap-y-1 text-[11px] th-text-m mb-6">
+            <span>ROE <strong class="th-text">${fmtNum(roeVal,1)}%</strong></span>
+            <span>=</span>
+            <span>${t('Net Margin')} <strong class="th-text">${fmtNum(npm['現在値'],1)}%</strong></span>
+            <span>&times;</span>
+            <span>${t('Asset Turnover')} <strong class="th-text">${fmtNum(at['現在値'],2)}x</strong></span>
+            <span>&times;</span>
+            <span>${t('Leverage')} <strong class="th-text">${fmtNum(em['現在値'],2)}x</strong></span>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div class="p-5 th-bg-2 border" style="border-color:var(--border-s);border-radius:0">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 bg-blue-500" style="border-radius:0"></div><span class="text-[10px] font-bold uppercase tracking-[0.18em] th-text-m" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">${t('Net Profit Margin')}</span></div>
+            <p class="text-2xl font-bold tabular-nums mb-1" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">${fmtNum(npm['現在値'],1)}<span class="text-sm th-text-m">%</span></p>
+            <p class="text-[10px] th-text-m mb-1">${t('Net Margin')} = ${t('Net Income')} / ${t('Revenue')}</p>
+            ${benchBadge('net_margin', 100, '%')}
+            <p class="text-[11px] th-text-m mb-3">${t('5Y Change:')} ${fmtNum(npm['5年変化pt'],1)}pt</p>
+            <canvas id="dupontNPMChart" style="max-height:120px"></canvas>
+            <div class="mt-4 ml-2 pl-3 border-l border-blue-500/20">
+              <p class="text-[10px] th-text-m mb-2">&#9492; ${t('breakdown-npm')}</p>
+              ${node(t('営業利益率'), (re['営業利益率']||{})['現在値'], (re['営業利益率']||{})['5年変化pt'], null, '%', 'operating_margin', 100)}
+              <div class="ml-3 pl-3 border-l border-blue-500/10 mb-1">
+                ${node(t('原価率'), (re['原価率']||{})['現在値'], (re['原価率']||{})['5年変化'], (re['原価率']||{})['評価'], '%')}
+                ${node(t('販管費率'), (re['販管費率']||{})['現在値'], (re['販管費率']||{})['5年変化'], (re['販管費率']||{})['評価'], '%')}
+              </div>
+              <p class="text-[10px] th-text-m mt-2 mb-1">&#9492; ${t('営業利益→純利益ギャップ')}</p>
+              ${node(t('金利負担率'), (re['金利負担率']||{})['現在値'], (re['金利負担率']||{})['5年変化pt'], (re['金利負担率']||{})['評価'], '%')}
+              ${node(t('営業外損益率'), (re['営業外損益率']||{})['現在値'], (re['営業外損益率']||{})['5年変化pt'], (re['営業外損益率']||{})['評価'], '%')}
+              ${node(t('税引後利益率'), (re['税引後利益率']||{})['現在値'], (re['税引後利益率']||{})['5年変化pt'], (re['税引後利益率']||{})['評価'], '%')}
+              ${re['純利益率検算'] ? `<p class="text-[9px] th-text-m mt-1">${t('検算')}: ${fmtNum((re['純利益率検算']||{})['計算値'],2)}% vs ${t('実績')} ${fmtNum((re['純利益率検算']||{})['実績値'],2)}%</p>` : ''}
+              <canvas id="dupontGapChart" class="mt-3" style="max-height:100px"></canvas>
+            </div>
+          </div>
+          <div class="p-5 th-bg-2 border" style="border-color:var(--border-s);border-radius:0">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 bg-brand" style="border-radius:0"></div><span class="text-[10px] font-bold uppercase tracking-[0.18em] th-text-m" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">${t('Asset Turnover')}</span></div>
+            <p class="text-2xl font-bold tabular-nums mb-1" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">${fmtNum(at['現在値'],2)}<span class="text-sm th-text-m">x</span></p>
+            <p class="text-[10px] th-text-m mb-1">${t('Asset Turnover')} = ${t('Revenue')} / ${t('Total Assets')}</p>
+            <p class="text-[11px] th-text-m mb-3">${t('5Y Change:')} ${fmtNum(at['5年変化'],2)}</p>
+            <canvas id="dupontATChart" style="max-height:120px"></canvas>
+            <div class="mt-4 ml-2 pl-3 border-l border-brand/20">
+              <p class="text-[10px] th-text-m mb-2">&#9492; ${t('breakdown-at')}</p>
+              ${node(t('総資産回転率'), at['現在値'], at['5年変化'], at['5年変化'] > 0 ? '改善' : (at['5年変化'] < 0 ? '悪化' : '横ばい'), 'x')}
+              <div class="ml-3 pl-3 border-l border-brand/10 mb-1">
+                ${node(t('固定資産回転率'), (re['固定資産回転率']||{})['現在値'], (re['固定資産回転率']||{})['5年変化'], (re['固定資産回転率']||{})['評価'])}
+                ${node(t('売上債権回転率'), (re['売上債権回転率']||{})['現在値'], (re['売上債権回転率']||{})['5年変化'], (re['売上債権回転率']||{})['評価'])}
+                ${node(t('棚卸資産回転率'), (re['棚卸資産回転率']||{})['現在値'], (re['棚卸資産回転率']||{})['5年変化'], (re['棚卸資産回転率']||{})['評価'])}
+              </div>
+            </div>
+          </div>
+          <div class="p-5 th-bg-2 border" style="border-color:var(--border-s);border-radius:0">
+            <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 bg-amber-500" style="border-radius:0"></div><span class="text-[10px] font-bold uppercase tracking-[0.18em] th-text-m" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">${t('Financial Leverage')}</span></div>
+            <p class="text-2xl font-bold tabular-nums mb-1" style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif">${fmtNum(em['現在値'],2)}<span class="text-sm th-text-m">x</span></p>
+            <p class="text-[10px] th-text-m mb-1">${t('Leverage')} = ${t('Total Assets')} / ${t('Equity')}</p>
+            <p class="text-[11px] th-text-m mb-3">${t('5Y Change:')} ${fmtNum(em['5年変化'],2)}</p>
+            <canvas id="dupontLEVChart" style="max-height:120px"></canvas>
+            <div class="mt-4 ml-2 pl-3 border-l border-amber-500/20">
+              <p class="text-[10px] th-text-m mb-2">&#9492; ${t('breakdown-lev')}</p>
+              ${node(t('財務レバレッジ'), em['現在値'], em['5年変化'], em['5年変化'] > 0 ? '上昇' : (em['5年変化'] < 0 ? '低下' : '横ばい'), 'x')}
+              <div class="ml-3 pl-3 border-l border-amber-500/10 mb-1">
+                ${node(t('自己資本比率'), (re['自己資本比率']||{})['現在値'], null, null, '%')}
+                ${node(t('負債比率'), (re['負債比率']||{})['現在値'], null, null, '%')}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== PBR Contribution Ranking ===== -->
+        ${buildPBRContribution()}
+        `;
+
+      // Render mini PER/ROE charts in PBR Decomposition
+      requestAnimationFrame(() => {
+        const ts = lastTimeseries || {};
+        const dates = (ts.dates || []).slice().reverse();
+        const latestYear = dates.length > 0 ? dates[dates.length - 1] : null;
+
+        const cs = getComputedStyle(document.documentElement);
+        const chartText = cs.getPropertyValue('--chart-text').trim();
+        const chartGridY = cs.getPropertyValue('--chart-grid-y').trim();
+        const miniOpts = (color, fmtCb) => ({
+          type: 'bar', options: {
+            responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { display: false }, ticks: { font: { size: 8 }, color: chartText, maxRotation: 45 } },
+              y: { grid: { color: chartGridY }, ticks: { font: { size: 8 }, color: chartText, callback: fmtCb || (v => smartFormat(v)) } },
+            },
+          },
+        });
+
+        // PER chart
+        const perCanvas = document.getElementById('roetreePERChart');
+        const perYearBadge = document.getElementById('perYearBadge');
+        const perChartContainer = document.getElementById('perChartContainer');
+
+        if (latestYear && perYearBadge) {
+          perYearBadge.textContent = currentLang === 'ja' ? latestYear + '年度' : 'FY' + latestYear;
+        }
+
+        if (perCanvas && ts.pe_ratio && ts.pe_ratio.length > 0) {
+          new Chart(perCanvas, { ...miniOpts('#d5001c', metricFmt('pe_ratio')), data: {
+            labels: dates, datasets: [{ data: ts.pe_ratio.slice().reverse(), backgroundColor: '#d5001c33', borderColor: '#d5001c', borderWidth: 1, borderRadius: 2 }]
+          }});
+        } else if (perChartContainer) {
+          perChartContainer.innerHTML = `<div class="flex items-center justify-center gap-2 p-3 border border-yellow-500/20 bg-yellow-500/5" style="border-radius:0"><span class="text-yellow-400">⚠</span><p class="text-[10px] th-text-m">${t('時系列データなし')}</p></div>`;
+        }
+
+        // ROE chart
+        const roeCanvas = document.getElementById('roetreeROEChart');
+        const roeYearBadge = document.getElementById('roeYearBadge');
+        const roeChartContainer = document.getElementById('roeChartContainer');
+
+        if (latestYear && roeYearBadge) {
+          roeYearBadge.textContent = currentLang === 'ja' ? latestYear + '年度' : 'FY' + latestYear;
+        }
+
+        if (roeCanvas && ts.roe && ts.roe.length > 0) {
+          new Chart(roeCanvas, { ...miniOpts('#22c55e', metricFmt('roe')), data: {
+            labels: dates, datasets: [{ data: ts.roe.slice().reverse(), backgroundColor: '#22c55e33', borderColor: '#22c55e', borderWidth: 1, borderRadius: 2 }]
+          }});
+        } else if (roeChartContainer) {
+          roeChartContainer.innerHTML = `<div class="flex items-center justify-center gap-2 p-3 border border-yellow-500/20 bg-yellow-500/5" style="border-radius:0"><span class="text-yellow-400">⚠</span><p class="text-[10px] th-text-m">${t('時系列データなし')}</p></div>`;
+        }
+        // DuPont decomposition charts
+        const dupontCharts = [
+          { id: 'dupontNPMChart', key: 'net_margin', color: '#3b82f6' },
+          { id: 'dupontATChart',  key: 'asset_turnover', color: '#d5001c' },
+          { id: 'dupontLEVChart', key: 'financial_leverage', color: '#f59e0b' },
+        ];
+        dupontCharts.forEach(({ id, key, color }) => {
+          const canvas = document.getElementById(id);
+          if (canvas && ts[key]) {
+            new Chart(canvas, { ...miniOpts(color, metricFmt(key)), data: {
+              labels: dates, datasets: [{ data: ts[key].slice().reverse(), backgroundColor: color + '33', borderColor: color, borderWidth: 1, borderRadius: 2 }]
+            }});
+          }
+        });
+        // Gap decomposition line chart (interest/nonop/tax burden)
+        const gapCanvas = document.getElementById('dupontGapChart');
+        if (gapCanvas && (ts.interest_burden || ts.nonop_burden || ts.tax_burden)) {
+          const mkDs = (label, key, color) => ({
+            label, data: (ts[key]||[]).slice().reverse(), borderColor: color,
+            backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 2, tension: 0.3
+          });
+          new Chart(gapCanvas, {
+            type: 'line',
+            data: {
+              labels: dates,
+              datasets: [
+                mkDs(t('金利負担率'), 'interest_burden', '#ef4444'),
+                mkDs(t('営業外損益率'), 'nonop_burden', '#8b5cf6'),
+                mkDs(t('税引後利益率'), 'tax_burden', '#06b6d4'),
+              ].filter(ds => ds.data.some(v => v !== null))
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { display: true, labels: { font: { size: 9 }, color: chartText, boxWidth: 12 } } },
+              scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 8 }, color: chartText, maxRotation: 45 } },
+                y: { ticks: { font: { size: 9 }, color: chartText, callback: v => v + '%' }, grid: { color: chartGridY } }
+              }
+            }
+          });
+        }
+      });
+    }
+
+    // Currency symbol map and globals
+    const CURRENCY_SYMBOLS = {
+      JPY:'¥', USD:'$', EUR:'€', GBP:'£', HKD:'HK$', KRW:'₩',
+      AUD:'A$', CAD:'C$', CNY:'¥', CHF:'Fr', INR:'₹', SGD:'S$', TWD:'NT$'
+    };
+    let currentCurrencyCode = 'JPY';
+    let currentCurrencySymbol = '¥';
+
+    // Smart number formatter for chart axes and tooltips
+    let isJPYData = false;  // kept for backward compat (no longer used in smartFormat)
+    let dataUnitScale = null;  // Track if data is already in millions
+    let evaluationCriteria = {};  // Store evaluation criteria from backend
+
+    function smartFormat(value) {
+      if (value == null || isNaN(value)) return '0';
+      if (value === 0) return '0';
+
+      const sym = currentCurrencySymbol;
+      const abs = Math.abs(value);
+
+      // Excel data is already stored in millions
+      if (dataUnitScale === 'millions') {
+        if (abs >= 1e6) return sym + (value / 1e6).toFixed(1) + 'T';   // ≥1M million = ≥1T
+        if (abs >= 1e3) return sym + (value / 1e3).toFixed(1) + 'B';   // ≥1K million = ≥1B
+        if (abs >= 1)   return sym + value.toFixed(1) + 'M';
+        if (abs >= 0.01) return sym + value.toFixed(2) + 'M';
+        return '0';
+      }
+
+      // yfinance raw values — apply T/B/M/K tiers directly
+      if (abs >= 1e12) return sym + (value / 1e12).toFixed(1) + 'T';
+      if (abs >= 1e9)  return sym + (value / 1e9).toFixed(1) + 'B';
+      if (abs >= 1e6)  return sym + (value / 1e6).toFixed(1) + 'M';
+      if (abs >= 1e3)  return sym + (value / 1e3).toFixed(1) + 'K';
+      if (abs >= 1)    return sym + value.toFixed(1);
+      if (abs >= 0.01) return sym + value.toFixed(2);
+      return '0';
+    }
+
+    // Metric-aware formatter — %/ratio keys bypass JPY scaling in smartFormat
+    const _PCT_KEYS  = new Set(['roe','roa','op_margin','ebitda_margin','net_margin','equity_ratio','roic','dividend_yield','payout_ratio','interest_burden','nonop_burden','tax_burden']);
+    const _RATIO_KEYS = new Set(['asset_turnover','financial_leverage','pe_ratio','pb_ratio','debt_fcf','debt_ebitda','nd_ebitda','quick_ratio','current_ratio']);
+    function metricFmt(key) {
+      if (_PCT_KEYS.has(key))   return v => (v != null && !isNaN(v)) ? v.toFixed(1) + '%' : '';
+      if (_RATIO_KEYS.has(key)) return v => (v != null && !isNaN(v)) ? v.toFixed(2) + 'x' : '';
+      return v => smartFormat(v);
+    }
+
+    function renderCharts(ts) {
+      Object.values(charts).forEach(c => c.destroy()); charts = {};
+      const revArr = a => Array.isArray(a) ? a.slice().reverse() : a;
+      const dates = revArr(ts.dates || []);
+      const tsR = {};
+      for (const k in ts) { tsR[k] = revArr(ts[k]); }
+      const cs = getComputedStyle(document.documentElement);
+      const chartText = cs.getPropertyValue('--chart-text').trim();
+      const chartGrid = cs.getPropertyValue('--chart-grid').trim();
+      const chartGridY = cs.getPropertyValue('--chart-grid-y').trim();
+      Chart.defaults.color = chartText;
+      Chart.defaults.borderColor = chartGrid;
+
+      const opts = {
+        responsive: true, maintainAspectRatio: true,
+        plugins: {
+          legend: { display: true, position: 'bottom', labels: { boxWidth: 8, padding: 16, font: { size: 10, family: 'Inter' }, color: chartText } },
+          tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + smartFormat(ctx.parsed.y) } },
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 9 }, color: chartText, maxRotation: 45 } },
+          y: { grid: { color: chartGridY }, ticks: { font: { size: 9 }, color: chartText, callback: v => smartFormat(v) } },
+        },
+        elements: { point: { radius: 2, hoverRadius: 4 }, line: { tension: 0.4, borderWidth: 2 } },
+      };
+
+      // % axis opts (for ROE/ROA)
+      const pctOpts = JSON.parse(JSON.stringify(opts));
+      pctOpts.scales.y.ticks = { font: { size: 9 }, color: chartText, callback: v => v.toFixed(1) + '%' };
+      pctOpts.plugins = { ...opts.plugins, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y != null ? ctx.parsed.y.toFixed(2) + '%' : '') } } };
+      pctOpts.elements = opts.elements;
+
+      function areaLine(id, label, data, color) {
+        charts[id] = new Chart($(id), { type: 'line', data: { labels: dates, datasets: [{
+          label, data, borderColor: color, backgroundColor: color + '18', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.4,
+        }] }, options: opts });
+      }
+      function multiLine(id, datasets, useOpts) {
+        charts[id] = new Chart($(id), { type: 'line', data: { labels: dates, datasets }, options: useOpts || opts });
+      }
+
+      areaLine('chartRevenue', t('Revenue'), tsR.revenue, '#d5001c');
+      areaLine('chartNetIncome', t('Net Income'), tsR.net_income, '#22c55e');
+      areaLine('chartFCF', 'FCF', tsR.fcf, '#8b5cf6');
+      areaLine('chartEPS', 'EPS', tsR.eps, '#f59e0b');
+
+      multiLine('chartROE', [
+        { label: 'ROE (%)', data: tsR.roe, borderColor: '#d5001c', backgroundColor: 'rgba(213,0,28,0.05)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.4 },
+        { label: 'ROA (%)', data: tsR.roa, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.05)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.4 },
+      ], pctOpts);
+
+      multiLine('chartBS', [
+        { label: t('Total Assets'), data: tsR.total_assets, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.4 },
+        { label: t('Equity'), data: tsR.total_equity, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.08)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.4 },
+        { label: t('Debt'), data: tsR.total_debt, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.4 },
+      ]);
+    }
+
+    // ── Competitor Analysis ──
+    const compColors = ['#d5001c', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6'];
+    let competitorFiles = [null, null, null, null, null];
+    let compCharts = {};
+
+    // Competitor metrics definition
+    // scaleRisk: true = スケール問題の可能性あり → 切替ボタン表示
+    const compMetrics = [
+      { key: 'revenue',       label: () => t('Revenue'),                   unit: '',  scaleRisk: true },
+      { key: 'net_income',    label: () => t('Net Income'),                unit: '',  scaleRisk: true },
+      { key: 'ebitda',        label: () => 'EBITDA',                       unit: '',  scaleRisk: true },
+      { key: 'eps',           label: () => 'EPS',                          unit: '',  scaleRisk: true },
+      { key: 'roe',           label: () => 'ROE (%)',                      unit: '%', scaleRisk: true },
+      { key: 'roa',           label: () => 'ROA (%)',                      unit: '%', scaleRisk: true },
+      { key: 'op_margin',     label: () => t('Operating Margin') + ' (%)',unit: '%', scaleRisk: true },
+      { key: 'ebitda_margin', label: () => 'EBITDA Margin (%)',            unit: '%', scaleRisk: true },
+      { key: 'equity_ratio',  label: () => t('Equity Ratio') + ' (%)',    unit: '%', scaleRisk: true },
+      { key: 'roic',          label: () => 'ROIC (%)',                     unit: '%', scaleRisk: true },
+      { key: 'pe_ratio',      label: () => 'PER (x)',                      unit: 'x', scaleRisk: true },
+      { key: 'pb_ratio',      label: () => 'PBR (x)',                      unit: 'x', scaleRisk: true },
+    ];
+
+    // Store raw data for re-rendering on toggle
+    let compRawData = null;
+
+    // Comp slot mode toggle + file/ticker handlers
+    document.querySelectorAll('.comp-slot').forEach(slot => {
+      const idx = parseInt(slot.dataset.slot);
+      const fileInput = slot.querySelector('.comp-file');
+      const fileLabel = slot.querySelector('.comp-file-label');
+      const tickerInput = slot.querySelector('.comp-ticker');
+      const nameSpan = slot.querySelector('.comp-file-name');
+      const removeBtn = slot.querySelector('.comp-remove');
+      const modeBtn = slot.querySelector('.comp-mode-toggle');
+
+      function applyMode() {
+        const mode = slot.dataset.mode;
+        if (mode === 'ticker') {
+          tickerInput.classList.remove('hidden');
+          fileLabel.classList.add('hidden');
+          nameSpan.textContent = '';
+          modeBtn.textContent = 'TKR';
+          modeBtn.style.color = '#d5001c';
+        } else {
+          tickerInput.classList.add('hidden');
+          tickerInput.value = '';
+          fileLabel.classList.remove('hidden');
+          modeBtn.textContent = 'FILE';
+          modeBtn.style.color = '';
+        }
+        updateCompareBtn();
+      }
+
+      modeBtn.addEventListener('click', () => {
+        slot.dataset.mode = slot.dataset.mode === 'ticker' ? 'file' : 'ticker';
+        competitorFiles[idx] = null;
+        fileInput.value = '';
+        nameSpan.textContent = '';
+        removeBtn.classList.add('hidden');
+        applyMode();
+      });
+
+      tickerInput.addEventListener('input', () => updateCompareBtn());
+
+      fileInput.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (file) {
+          competitorFiles[idx] = file;
+          nameSpan.textContent = file.name;
+          removeBtn.classList.remove('hidden');
+          updateCompareBtn();
+        }
+      });
+
+      removeBtn.addEventListener('click', () => {
+        competitorFiles[idx] = null;
+        fileInput.value = '';
+        tickerInput.value = '';
+        nameSpan.textContent = '';
+        removeBtn.classList.add('hidden');
+        updateCompareBtn();
+      });
+
+      applyMode();
+    });
+
+    function updateCompareBtn() {
+      let count = 0;
+      document.querySelectorAll('.comp-slot').forEach((slot, i) => {
+        if (slot.dataset.mode === 'ticker') {
+          if (slot.querySelector('.comp-ticker').value.trim()) count++;
+        } else {
+          if (competitorFiles[i]) count++;
+        }
+      });
+      $('btnCompetitorAnalyze').disabled = count < 2;
+    }
+
+    $('btnCompetitorAnalyze').addEventListener('click', runCompetitorAnalysis);
+
+    async function runCompetitorAnalysis() {
+      const fd = new FormData();
+      const slots = document.querySelectorAll('.comp-slot');
+      let count = 0;
+      slots.forEach((slot, i) => {
+        const mode = slot.dataset.mode;
+        const name = slot.querySelector('.comp-name').value.trim();
+        if (mode === 'ticker') {
+          const ticker = slot.querySelector('.comp-ticker').value.trim();
+          if (!ticker) return;
+          fd.append('types[]', 'ticker');
+          fd.append('tickers[]', ticker);
+          fd.append('names[]', name || ticker);
+          count++;
+        } else {
+          const file = competitorFiles[i];
+          if (!file) return;
+          fd.append('types[]', 'file');
+          fd.append('files[]', file);
+          fd.append('names[]', name || file.name.replace(/\.[^.]+$/, ''));
+          count++;
+        }
+      });
+      if (count < 2) return;
+
+      const indSel = $('inputIndustry');
+      if (indSel) fd.append('damodaran_industry', indSel.value || '');
+      fd.append('investor_profile', selectedInvestorProfile);
+
+      $('btnCompetitorAnalyze').disabled = true;
+      $('compLoading').classList.remove('hidden');
+
+      try {
+        const res = await fetch('/api/competitor_analyze', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.error) {
+          $('srAnnouncer').textContent = data.error;
+          $('compLoading').textContent = data.error;
+          $('compLoading').classList.remove('hidden');
+          return;
+        }
+        renderCompetitorResults(data);
+      } catch (e) {
+        $('srAnnouncer').textContent = 'Error: ' + e.message;
+        $('compLoading').textContent = 'Error: ' + e.message;
+        $('compLoading').classList.remove('hidden');
+      } finally {
+        $('btnCompetitorAnalyze').disabled = false;
+        $('compLoading').classList.add('hidden');
+        updateCompareBtn();
+      }
+    }
+
+    function renderCompetitorResults(data) {
+      compRawData = data;
+      const companies = data.companies;
+
+      // --- Summary Table ---
+      const summaryDiv = $('competitorSummary');
+      summaryDiv.classList.remove('hidden');
+
+      const summaryMetrics = [
+        { key: 'revenue', label: () => t('Revenue'), fmt: v => v != null ? smartFormat(v) : '—' },
+        { key: 'roe', label: 'ROE', fmt: v => v != null ? v.toFixed(1) + '%' : '—' },
+        { key: 'roa', label: 'ROA', fmt: v => v != null ? v.toFixed(1) + '%' : '—' },
+        { key: 'op_margin', label: () => t('Operating Margin'), fmt: v => v != null ? v.toFixed(1) + '%' : '—' },
+        { key: 'equity_ratio', label: () => t('Equity Ratio'), fmt: v => v != null ? v.toFixed(1) + '%' : '—' },
+        { key: 'pe_ratio', label: 'PER', fmt: v => v != null ? v.toFixed(1) + 'x' : '—' },
+        { key: 'pb_ratio', label: 'PBR', fmt: v => v != null ? v.toFixed(2) + 'x' : '—' },
+        { key: 'roic', label: 'ROIC', fmt: v => v != null ? v.toFixed(1) + '%' : '—' },
+      ];
+
+      let thtml = `<h3 class="text-sm font-bold th-text-s mb-4" data-i18n="comp-summary-title">${t('comp-summary-title')}</h3>`;
+      thtml += `<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="border-b th-border">`;
+      thtml += `<th class="text-left py-3 px-2 th-text-m font-medium">${t('Metrics')}</th>`;
+      companies.forEach((c, i) => {
+        thtml += `<th class="text-right py-3 px-3 font-bold" style="color:${compColors[i]}">${escapeHtml(c.name)}</th>`;
+      });
+      thtml += `</tr></thead><tbody>`;
+
+      summaryMetrics.forEach(m => {
+        thtml += `<tr class="border-b th-border hover:th-bg-1 transition-colors">`;
+        const label = typeof m.label === 'function' ? m.label() : m.label;
+        thtml += `<td class="py-2.5 px-2 th-text-m font-medium">${label}</td>`;
+        companies.forEach((c, i) => {
+          const ts = c.timeseries[m.key];
+          const val = Array.isArray(ts) && ts.length > 0 ? ts[0] : null;
+          thtml += `<td class="text-right py-2.5 px-3 font-mono" style="color:${compColors[i]}">${m.fmt(val)}</td>`;
+        });
+        thtml += `</tr>`;
+      });
+      thtml += `</tbody></table></div>`;
+      summaryDiv.innerHTML = thtml;
+
+      // --- Charts ---
+      renderCompetitorCharts('absolute');
+    }
+
+    // Track per-chart mode: 'absolute' or 'indexed'
+    let compChartModes = {};
+
+    function renderCompetitorCharts(defaultMode) {
+      const companies = compRawData.companies;
+      const chartsDiv = $('competitorCharts');
+      chartsDiv.classList.remove('hidden');
+
+      // Destroy old charts
+      Object.values(compCharts).forEach(c => c.destroy());
+      compCharts = {};
+      chartsDiv.innerHTML = '';
+
+      // Collect all dates and sort ascending
+      const allDatesSet = new Set();
+      companies.forEach(c => {
+        (c.timeseries.dates || []).forEach(d => { if (d) allDatesSet.add(d); });
+      });
+      const allDates = Array.from(allDatesSet).sort();
+
+      // Chart styling
+      const cs = getComputedStyle(document.documentElement);
+      const chartText = cs.getPropertyValue('--chart-text').trim();
+      const chartGridY = cs.getPropertyValue('--chart-grid-y').trim();
+
+      compMetrics.forEach(metric => {
+        const hasData = companies.some(c => {
+          const ts = c.timeseries[metric.key];
+          return Array.isArray(ts) && ts.some(v => v != null);
+        });
+        if (!hasData) return;
+
+        const canvasId = 'compChart_' + metric.key;
+        const mode = compChartModes[metric.key] || defaultMode || 'absolute';
+        compChartModes[metric.key] = mode;
+
+        const card = document.createElement('div');
+        card.className = 'th-bg-1 rounded-2xl p-6 border th-border';
+
+        // Header with toggle button
+        const isIndexed = mode === 'indexed';
+        const toggleLabel = isIndexed ? t('comp-btn-absolute') : t('comp-btn-indexed');
+        const modeLabel = isIndexed ? `<span class="text-[9px] font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 ml-2">${t('comp-mode-indexed')}</span>` : '';
+
+        let headerHtml = `<div class="flex items-center justify-between mb-4">
+          <h4 class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m flex items-center">${metric.label()}${modeLabel}</h4>`;
+        if (metric.scaleRisk) {
+          headerHtml += `<button class="comp-toggle-btn text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-lg border th-border-s hover:border-brand hover:text-brand transition-all" data-metric="${metric.key}">${toggleLabel}</button>`;
+        }
+        headerHtml += `</div><canvas id="${canvasId}"></canvas>`;
+        card.innerHTML = headerHtml;
+        chartsDiv.appendChild(card);
+
+        // Build datasets
+        const rawDatasets = companies.map((c, i) => {
+          const ts = c.timeseries[metric.key] || [];
+          const dates = c.timeseries.dates || [];
+          const dateMap = {};
+          dates.forEach((d, j) => { if (d) dateMap[d] = ts[j]; });
+          return { name: c.name, idx: i, dateMap };
+        });
+
+        const datasets = rawDatasets.map(rd => {
+          let chartData;
+          if (isIndexed) {
+            // Find base value (first non-null value in ascending date order)
+            let baseVal = null;
+            for (const d of allDates) {
+              if (rd.dateMap[d] != null && rd.dateMap[d] !== 0) { baseVal = rd.dateMap[d]; break; }
+            }
+            chartData = allDates.map(d => {
+              const v = rd.dateMap[d];
+              if (v == null || baseVal == null) return null;
+              return Math.round((v / baseVal) * 1000) / 10; // index: base=100
+            });
+          } else {
+            chartData = allDates.map(d => rd.dateMap[d] != null ? rd.dateMap[d] : null);
+          }
+          return {
+            label: rd.name,
+            data: chartData,
+            borderColor: compColors[rd.idx],
+            backgroundColor: compColors[rd.idx] + '12',
+            fill: false,
+            spanGaps: false,
+          };
+        });
+
+        const cFmt = metricFmt(metric.key);
+        const baseOpts = {
+          responsive: true, maintainAspectRatio: true,
+          plugins: {
+            legend: { display: true, position: 'bottom', labels: { boxWidth: 8, padding: 12, font: { size: 10, family: 'Inter' }, color: chartText } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  const v = ctx.parsed.y;
+                  if (v == null) return '';
+                  if (isIndexed) return `${ctx.dataset.label}: ${v.toFixed(1)} (${t('comp-base')}=100)`;
+                  return `${ctx.dataset.label}: ${cFmt(v)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 9 }, color: chartText, maxRotation: 45 } },
+            y: {
+              grid: { color: chartGridY },
+              ticks: {
+                font: { size: 9 }, color: chartText,
+                callback: function(v) { return isIndexed ? v.toFixed(0) : cFmt(v); }
+              },
+              title: isIndexed ? { display: true, text: t('comp-base') + ' = 100', font: { size: 9 }, color: chartText } : { display: false },
+            }
+          },
+          elements: { point: { radius: 3, hoverRadius: 5 }, line: { tension: 0.4, borderWidth: 2.5 } },
+        };
+
+        // Add reference line at 100 for indexed mode
+        if (isIndexed) {
+          baseOpts.plugins.annotation = {
+            annotations: { baseline: { type: 'line', yMin: 100, yMax: 100, borderColor: chartText + '40', borderWidth: 1, borderDash: [4, 4] } }
+          };
+        }
+
+        compCharts[canvasId] = new Chart(document.getElementById(canvasId), {
+          type: 'line',
+          data: { labels: allDates, datasets },
+          options: baseOpts,
+        });
+      });
+
+      // Attach toggle event listeners
+      document.querySelectorAll('.comp-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const mk = btn.dataset.metric;
+          compChartModes[mk] = compChartModes[mk] === 'indexed' ? 'absolute' : 'indexed';
+          renderCompetitorCharts();
+        });
+      });
+    }
+
+    // ── Language toggle ──
+    function applyLang() {
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        el.textContent = t(el.getAttribute('data-i18n'));
+      });
+      // Currency option labels
+      document.querySelectorAll('#inputCurrency option[data-ja]').forEach(opt => {
+        opt.textContent = opt.getAttribute('data-' + currentLang) || opt.getAttribute('data-en');
+      });
+      // M11: html lang 属性を現在の言語に同期
+      document.documentElement.lang = currentLang === 'ja' ? 'ja' : 'en';
+      updateIndustryDropdown();
+      updateRegionButton();
+      // Re-render dashboard if data exists
+      if (lastData) renderDashboard(lastData);
+    }
+
+    // H8: モーダルのキーボードアクセシビリティ (Escapeで閉じる + フォーカス管理)
+    const _modalIds = ['chartModal', 'criteriaModal', 'checklistModal'];
+    let _modalOpener = null;  // モーダルを開いたボタンへの参照（閉じた後にフォーカスを戻す）
+
+    function openModal(modalId, openerEl) {
+      const modal = $(modalId);
+      if (!modal) return;
+      _modalOpener = openerEl || document.activeElement;
+      modal.classList.add('active');
+      // フォーカストラップ: モーダル内の最初のフォーカス可能要素にフォーカス
+      const focusable = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (focusable.length > 0) focusable[0].focus();
+    }
+
+    function closeModal(modalId) {
+      const modal = $(modalId);
+      if (!modal) return;
+      modal.classList.remove('active');
+      // 元のボタンにフォーカスを戻す
+      if (_modalOpener && typeof _modalOpener.focus === 'function') {
+        _modalOpener.focus();
+        _modalOpener = null;
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        for (const id of _modalIds) {
+          const m = $(id);
+          if (m && m.classList.contains('active')) {
+            closeModal(id);
+            e.preventDefault();
+            break;
+          }
+        }
+      }
+    });
+
+    $('langToggle').addEventListener('click', () => {
+      currentLang = currentLang === 'en' ? 'ja' : 'en';
+      localStorage.setItem('lang', currentLang);
+      $('langToggle').textContent = currentLang === 'en' ? 'EN / JA' : 'JA / EN';
+      applyLang();
+      // プロファイル説明文を言語に合わせて更新
+      selectProfile(selectedInvestorProfile);
+    });
+
+    // Init language
+    if (currentLang === 'ja') {
+      $('langToggle').textContent = 'JA / EN';
+      applyLang();
+    }
+
+    // ── Chart Modal ──
+    let modalChart = null;
+    const modal = $('chartModal');
+    $('chartModalClose').addEventListener('click', () => closeModal('chartModal'));
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal('chartModal'); });
+
+    // Chart color palette
+    const chartColors = {
+      revenue:'#d5001c', fcf:'#8b5cf6', eps:'#f59e0b', ocf:'#3b82f6',
+      roe:'#d5001c', roa:'#3b82f6', op_margin:'#22c55e', ebitda:'#f59e0b',
+      equity_ratio:'#3b82f6', quick_ratio:'#f59e0b', current_ratio:'#22c55e',
+      debt_fcf:'#ef4444', roic:'#22c55e',
+      investing_cf:'#ef4444', financing_cf:'#8b5cf6',
+      pe_ratio:'#d5001c', pb_ratio:'#f59e0b', nd_ebitda:'#6366f1',
+      ebitda_margin:'#f59e0b', debt_ebitda:'#ef4444',
+      net_margin:'#3b82f6', asset_turnover:'#d5001c', financial_leverage:'#f59e0b',
+      dividend_yield:'#22c55e', payout_ratio:'#8b5cf6',
+    };
+
+    function getChartData(key) {
+      const ts = lastTimeseries || {};
+      const q = lastData ? lastData.quantitative : {};
+      const rd = (lastData || {}).raw_data || {};
+      const dates = ts.dates || [];
+
+      // 1) timeseries にキーがあれば全時系列を使う（最優先）
+      if (ts[key] && Array.isArray(ts[key]) && ts[key].some(v => v !== null && v !== undefined)) {
+        return { labels: dates.slice().reverse(), data: ts[key].slice().reverse() };
+      }
+
+      // 2) raw_data に配列があればそれを使う（JSON mode — no Excel timeseries）
+      const rdArrayMap = {
+        revenue: 'revenue', fcf: 'fcf', eps: 'eps', ocf: 'operating_cf',
+        investing_cf: 'investing_cf', financing_cf: 'financing_cf',
+        op_margin: 'op_margin',
+      };
+      const rdKey = rdArrayMap[key];
+      if (rdKey && rd[rdKey] && Array.isArray(rd[rdKey]) && rd[rdKey].length >= 2) {
+        const arr = rd[rdKey];
+        const isJa = currentLang === 'ja';
+        const lbl = arr.map((_, i) => i === 0 ? (isJa ? '最新' : 'Latest') : (isJa ? `${i}年前` : `${i}Y ago`));
+        return { labels: lbl.slice().reverse(), data: arr.slice().reverse() };
+      }
+
+      // 3) 2点データ（現在値 vs 5年前）— 最後の手段
+      const twoPointMap = {
+        equity_ratio:  { cur: (q['自己資本比率']||{})['現在値'], y5: rd.equity_ratio_5y },
+        quick_ratio:   { cur: (q['当座比率']||{})['現在値'],     y5: rd.quick_ratio_5y },
+        current_ratio: { cur: (q['流動比率']||{})['現在値'],     y5: rd.current_ratio_5y },
+        debt_fcf:      { cur: rd.debt_fcf,                       y5: rd.debt_fcf_5y },
+        roic:          { cur: (q['ROIC']||{})['ROIC'],           y5: (q['ROIC']||{})['ROIC'] !== undefined && (q['ROIC']||{})['ROIC_5年変化pt'] !== undefined ? (q['ROIC']||{})['ROIC'] - (q['ROIC']||{})['ROIC_5年変化pt'] : undefined },
+        ebitda_margin: { cur: rd.ebitda_margin,                  y5: rd.ebitda_margin_5y },
+      };
+      if (twoPointMap[key]) {
+        const p = twoPointMap[key];
+        const lblCur = currentLang === 'ja' ? '最新' : 'Latest';
+        const lbl5y = currentLang === 'ja' ? '5年前' : '5Y Ago';
+        if (p.cur !== undefined && p.y5 !== undefined) {
+          return { labels: [lbl5y, lblCur], data: [p.y5, p.cur] };
+        }
+        if (p.cur !== undefined) {
+          return { labels: [lblCur], data: [p.cur] };
+        }
+      }
+
+      return null;
+    }
+
+    function showItemChart(key, label) {
+      const cd = getChartData(key);
+      if (!cd || !cd.data.length) return;
+
+      openModal('chartModal', null);
+      $('chartModalTitle').textContent = label;
+
+      if (modalChart) modalChart.destroy();
+
+      const cs = getComputedStyle(document.documentElement);
+      const chartText = cs.getPropertyValue('--chart-text').trim();
+      const chartGridY = cs.getPropertyValue('--chart-grid-y').trim();
+      const color = chartColors[key] || '#d5001c';
+      const mFmt = metricFmt(key);
+
+      modalChart = new Chart($('chartModalCanvas'), {
+        type: 'bar',
+        data: {
+          labels: cd.labels,
+          datasets: [
+            {
+              type: 'bar',
+              label: label,
+              data: cd.data,
+              backgroundColor: color + '44',
+              borderColor: color,
+              borderWidth: 1.5,
+              borderRadius: 4,
+              order: 2,
+            },
+            {
+              type: 'line',
+              label: label + ' (Trend)',
+              data: cd.data,
+              borderColor: color,
+              backgroundColor: 'transparent',
+              borderWidth: 2.5,
+              pointRadius: 5,
+              pointBackgroundColor: color,
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              tension: 0.3,
+              order: 1,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: { label: ctx => ctx.dataset.type === 'bar' ? label + ': ' + mFmt(ctx.parsed.y) : '' }
+            },
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 11 }, color: chartText } },
+            y: { grid: { color: chartGridY }, ticks: { font: { size: 10 }, color: chartText, callback: mFmt } },
+          },
+        }
+      });
+    }
+
+    // ========== Custom Analysis ==========
+    let availableMetrics = [];
+    let selectedMetrics = new Set();
+    let customTimeseries = null;
+    const customCharts = {};
+    const catNames = {
+      performance: 'cat-performance', growth: 'cat-growth', profitability: 'cat-profitability',
+      health: 'cat-health', valuation: 'cat-valuation', other: 'cat-other',
+    };
+    const catOrder = ['performance','growth','profitability','health','valuation','other'];
+
+    // Scan metrics when Custom tab first opened or on demo/upload
+    async function loadMetrics(isSample) {
+      try {
+        let res;
+        if (isSample) {
+          res = await fetch('/api/scan_sample');
+        } else {
+          return; // upload scanning handled separately
+        }
+        const data = await res.json();
+        if (data.metrics) {
+          availableMetrics = data.metrics;
+        }
+      } catch(e) { console.error('scan error', e); }
+    }
+
+    function openChecklist() {
+      openModal('checklistModal', null);
+      renderChecklist();
+    }
+
+    function renderChecklist() {
+      const body = $('checklistBody');
+      const grouped = {};
+      catOrder.forEach(c => grouped[c] = []);
+      availableMetrics.forEach(m => {
+        const c = grouped[m.cat] ? m.cat : 'other';
+        grouped[c].push(m);
+      });
+
+      let html = '';
+      catOrder.forEach(cat => {
+        const items = grouped[cat];
+        if (!items.length) return;
+        const catLabel = t(catNames[cat]);
+        html += `<div>
+          <h4 class="text-[10px] font-bold uppercase tracking-[0.2em] th-text-m mb-3">${catLabel}</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">`;
+        items.forEach(m => {
+          const checked = selectedMetrics.has(m.key) ? 'checked' : '';
+          const label = currentLang === 'ja' ? m.ja : m.en;
+          const latestStr = m.latest !== null && m.latest !== undefined ? ` (${fmtNum(m.latest,1)})` : '';
+          html += `<label class="flex items-center gap-3 p-3 rounded-lg th-bg-2 border cursor-pointer hover:border-brand/30 transition-all" style="border-color:var(--border)">
+            <input type="checkbox" class="metric-cb accent-brand" data-key="${m.key}" ${checked}>
+            <div>
+              <span class="text-xs font-medium th-text-s">${label}</span>
+              <span class="text-[10px] th-text-m">${m.unit}${latestStr}</span>
+              <span class="text-[9px] th-text-m ml-1">${m.points}pts</span>
+            </div>
+          </label>`;
+        });
+        html += `</div></div>`;
+      });
+      body.innerHTML = html;
+    }
+
+    $('btnOpenChecklist').addEventListener('click', openChecklist);
+    $('btnEditChecklist').addEventListener('click', openChecklist);
+    $('checklistClose').addEventListener('click', () => closeModal('checklistModal'));
+    $('checklistModal').addEventListener('click', e => { if (e.target === $('checklistModal')) closeModal('checklistModal'); });
+
+    $('checklistClear').addEventListener('click', () => {
+      selectedMetrics.clear();
+      $('checklistBody').querySelectorAll('.metric-cb').forEach(cb => cb.checked = false);
+    });
+
+    $('checklistApply').addEventListener('click', async () => {
+      selectedMetrics.clear();
+      $('checklistBody').querySelectorAll('.metric-cb:checked').forEach(cb => selectedMetrics.add(cb.dataset.key));
+      closeModal('checklistModal');
+
+      if (selectedMetrics.size === 0) {
+        $('customEmpty').classList.remove('hidden');
+        $('customContent').classList.add('hidden');
+        return;
+      }
+
+      // Fetch custom timeseries
+      try {
+        const res = await fetch('/api/custom_analysis', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ selected: [...selectedMetrics] }),
+        });
+        const data = await res.json();
+        if (data.timeseries) {
+          customTimeseries = data.timeseries;
+          renderCustomAnalysis();
+        }
+      } catch(e) { console.error('custom analysis error', e); }
+    });
+
+    function renderCustomAnalysis() {
+      $('customEmpty').classList.add('hidden');
+      $('customContent').classList.remove('hidden');
+
+      // Clear all cat containers
+      catOrder.forEach(cat => {
+        const el = $('customCat-' + cat);
+        el.classList.add('hidden');
+        el.querySelector('.custom-cat-items').innerHTML = '';
+      });
+
+      // Destroy old charts
+      Object.values(customCharts).forEach(c => c.destroy());
+      Object.keys(customCharts).forEach(k => delete customCharts[k]);
+
+      const metaMap = {};
+      availableMetrics.forEach(m => metaMap[m.key] = m);
+      const dates = (customTimeseries.dates || []).slice().reverse();
+
+      // Group selected metrics by category
+      const grouped = {};
+      catOrder.forEach(c => grouped[c] = []);
+      selectedMetrics.forEach(key => {
+        const m = metaMap[key];
+        if (!m) return;
+        const cat = grouped[m.cat] ? m.cat : 'other';
+        grouped[cat].push({ key, meta: m });
+      });
+
+      catOrder.forEach(cat => {
+        const items = grouped[cat];
+        if (!items.length) return;
+        const container = $('customCat-' + cat);
+        container.classList.remove('hidden');
+        const itemsDiv = container.querySelector('.custom-cat-items');
+
+        items.forEach(({ key, meta }) => {
+          const tsData = customTimeseries[key];
+          if (!tsData || !tsData.length) return;
+
+          const label = currentLang === 'ja' ? meta.ja : meta.en;
+          const latest = tsData[0];
+          const latestStr = latest !== null && latest !== undefined ? fmtNum(latest, 1) + ' ' + meta.unit : '—';
+
+          // Card with embedded mini chart
+          const canvasId = 'customChart_' + key;
+          const cardHtml = `<div class="p-4 rounded-xl th-bg-1 border mb-3" style="border-color:var(--border)">
+            <div class="flex items-center justify-between mb-3">
+              <p class="text-sm font-medium th-text-s">${label}</p>
+              <span class="text-sm font-bold th-text-s tabular-nums">${latestStr}</span>
+            </div>
+            <canvas id="${canvasId}" style="max-height:160px"></canvas>
+          </div>`;
+          itemsDiv.innerHTML += cardHtml;
+
+          // Render chart after DOM update
+          requestAnimationFrame(() => {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const cs = getComputedStyle(document.documentElement);
+            const chartText = cs.getPropertyValue('--chart-text').trim();
+            const chartGridY = cs.getPropertyValue('--chart-grid-y').trim();
+            const color = chartColors[key] || '#d5001c';
+            customCharts[key] = new Chart(canvas, {
+              type: 'bar',
+              data: {
+                labels: dates,
+                datasets: [{ label, data: tsData.slice().reverse(), backgroundColor: color + '44', borderColor: color, borderWidth: 1.5, borderRadius: 4 }],
+              },
+              options: {
+                responsive: true, maintainAspectRatio: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                  x: { grid: { display: false }, ticks: { font: { size: 10 }, color: chartText } },
+                  y: { grid: { color: chartGridY }, ticks: { font: { size: 9 }, color: chartText, callback: v => smartFormat(v) } },
+                },
+              },
+            });
+          });
+        });
+      });
+    }
+
+    // Auto-load metrics when demo is clicked
+    const origBtnSample = $('btnSample');
+    origBtnSample.addEventListener('click', () => { setTimeout(() => loadMetrics(true), 500); }, { capture: true });
+  </script>
+</body>
+</html>
