@@ -15,6 +15,10 @@
   INDUSTRY_LIST
 """
 
+# ── 標準ライブラリ ────────────────────────────────────────────────────────────
+import logging
+import math
+
 # ── 公開インポート ────────────────────────────────────────────────────────────
 from _analyzer_thresholds import (
     DEFAULT_THRESHOLDS,
@@ -25,6 +29,8 @@ from _analyzer_thresholds import (
 from _analyzer_quantitative import analyze_quantitative
 from _analyzer_screening import analyze_screening
 from _analyzer_trees import analyze_roa_tree, analyze_roe_tree, compute_pbr_contribution
+
+logger = logging.getLogger(__name__)
 
 INDUSTRY_LIST = ["製造・サービス"]
 
@@ -127,47 +133,98 @@ DATA_CONTRACT = {
 }
 
 
+# ── データ正規化 ──────────────────────────────────────────────────────────────
+# listとして期待するフィールド
+_LIST_FIELDS = {
+    'revenue', 'eps', 'op_margin', 'roe', 'roa', 'fcf',
+    'operating_cf', 'investing_cf', 'financing_cf',
+}
+# scalarとして期待するフィールド
+_FLOAT_FIELDS = {
+    'equity_ratio', 'equity_ratio_5y', 'quick_ratio', 'quick_ratio_5y',
+    'current_ratio', 'current_ratio_5y', 'total_assets', 'total_assets_5y',
+    'total_equity', 'total_equity_5y', 'ebitda_margin', 'ebitda_margin_5y',
+    'per', 'per_5y', 'pbr', 'pbr_5y', 'dividend_yield', 'dividend_yield_5y',
+    'payout_ratio', 'payout_ratio_5y', 'nopat', 'nopat_5y',
+    'invested_capital', 'invested_capital_5y', 'wacc', 'ev', 'nd_ebitda',
+    'debt_fcf', 'debt_fcf_5y', 'cogs', 'cogs_5y', 'sga_ratio', 'sga_ratio_5y',
+    'op_income_val', 'op_income_val_5y', 'interest_exp', 'interest_exp_5y',
+    'pretax_income', 'pretax_income_5y', 'income_tax', 'income_tax_5y',
+    'net_income_val', 'net_income_val_5y', 'other_exp', 'other_exp_5y',
+    'fixed_assets', 'fixed_assets_5y', 'roe_growth_rate',
+    'accounts_receivable', 'accounts_receivable_5y',
+    'inventory', 'inventory_5y', 'accounts_payable', 'accounts_payable_5y',
+}
+
+
+def _safe_num(v):
+    """数値をfloatに変換。NaN / inf / None / 変換不可は None を返す。"""
+    if v is None:
+        return None
+    try:
+        f = float(v)
+        return None if (math.isnan(f) or math.isinf(f)) else f
+    except (TypeError, ValueError):
+        return None
+
+
+def normalize_financial_data(data: dict) -> dict:
+    """財務データを正規化する。
+
+    - NaN / inf → None
+    - listフィールドの各要素を安全なfloatに変換
+    - listが来るべきフィールドにscalarが来た場合は [v] に変換
+    - scalarフィールドに不正な値が来た場合は None に変換
+
+    parse_excel / parse_yfinance の出力を run_full_analysis に渡す前に
+    必ず呼ぶこと。分析ロジックが NaN/inf によるクラッシュを起こさなくなる。
+    """
+    result = dict(data)
+
+    for field in _LIST_FIELDS:
+        val = result.get(field)
+        if val is None:
+            result[field] = []
+        elif not isinstance(val, list):
+            result[field] = [_safe_num(val)]
+        else:
+            result[field] = [_safe_num(x) for x in val]
+
+    for field in _FLOAT_FIELDS:
+        result[field] = _safe_num(result.get(field))
+
+    return result
+
+
 # ── バリデーション ────────────────────────────────────────────────────────────
 def validate_financial_data(data: dict) -> None:
     """分析実行前にデータ品質を検証する。
 
-    問題が見つかった場合は ValueError を raise する。
-    parse_excel / parse_yfinance の出力が空だった場合に
-    「解析成功 → 分析失敗」という遅延エラーを防ぐ。
+    問題は ValueError を raise せず _validation_warnings に追記するだけ。
+    ランダムなティッカーでデータが部分的に欠損していても分析を継続させる。
+    （致命的なクラッシュは run_full_analysis 内の try/except が受け持つ）
     """
     if not isinstance(data, dict):
         raise ValueError("分析データは dict 型である必要があります")
 
-    # 必須フィールドの存在確認（最低限の分析に必要なもの）
-    required_fields = ["revenue", "roe", "roa"]
-    missing = [f for f in required_fields if not data.get(f)]
-    if missing:
-        raise ValueError(
-            f"必須データが不足しています: {', '.join(missing)}。"
-            "Excelの列ヘッダーが認識できているか確認してください。"
-        )
-
-    # 配列型フィールドの長さ検証
-    list_fields = {
-        "revenue": 4,
-        "eps": 4,
-        "roe": 3,
-        "roa": 3,
-    }
     warnings = []
-    for field, min_len in list_fields.items():
+
+    # 主要フィールドのデータ量チェック（警告のみ）
+    check_fields = {"revenue": 2, "eps": 2, "roe": 2, "roa": 2}
+    for field, min_len in check_fields.items():
         val = data.get(field)
-        if val is not None and isinstance(val, list):
+        if not val or not isinstance(val, list):
+            warnings.append(f"{field}: データなし")
+        else:
             non_none = [v for v in val if v is not None]
             if len(non_none) < min_len:
-                warnings.append(f"{field}: {len(non_none)}件（推奨{min_len}件以上）")
+                warnings.append(f"{field}: データが{len(non_none)}件（推奨{min_len}件以上）")
 
-    # 数値範囲の基本チェック（明らかな異常値）
+    # 数値範囲の基本チェック（明らかな異常値は警告）
     equity_ratio = data.get("equity_ratio")
-    if equity_ratio is not None and not (0 <= equity_ratio <= 100):
-        raise ValueError(f"自己資本比率が範囲外です: {equity_ratio}（0〜100%の範囲で入力）")
+    if equity_ratio is not None and not (-200 <= equity_ratio <= 200):
+        warnings.append(f"equity_ratio が範囲外: {equity_ratio:.1f}%")
 
-    # 警告はエラーではなく data に付記（UI側でハイライト可能）
     if warnings:
         data.setdefault("_validation_warnings", []).extend(warnings)
 
@@ -183,18 +240,49 @@ def run_full_analysis(data: dict, benchmark=None, investor_profile: str = 'balan
 
     Returns:
         分析結果 dict（quantitative / screening / roa_tree / roe_tree / pbr_contribution 等を含む）
-
-    Raises:
-        ValueError: データが最低限の品質要件を満たさない場合
+        サブ分析が部分的に失敗しても、残りの結果を返す（部分的成功）。
     """
+    # ── Layer A: 正規化（NaN/inf/型不整合を除去）────────────────────────────
+    data = normalize_financial_data(data)
     validate_financial_data(data)
 
-    q_results = analyze_quantitative(data, benchmark=benchmark)
-    s_results = analyze_screening(data, q_results, benchmark=benchmark, investor_profile=investor_profile)
-    r_results = analyze_roa_tree(data)
-    roe_results = analyze_roe_tree(data)
-    pbr_contrib = compute_pbr_contribution(roe_results, s_results, data, benchmark=benchmark)
-    evaluation_criteria = generate_evaluation_criteria(benchmark)
+    # ── サブ分析（各モジュールを独立して実行 — 1つ失敗しても他は継続）────────
+    q_results = {}
+    try:
+        q_results = analyze_quantitative(data, benchmark=benchmark)
+    except Exception as e:
+        logger.warning("analyze_quantitative failed for %s: %s", data.get("ticker", "?"), e)
+
+    s_results = {}
+    try:
+        s_results = analyze_screening(data, q_results, benchmark=benchmark, investor_profile=investor_profile)
+    except Exception as e:
+        logger.warning("analyze_screening failed for %s: %s", data.get("ticker", "?"), e)
+
+    r_results = {}
+    try:
+        r_results = analyze_roa_tree(data)
+    except Exception as e:
+        logger.warning("analyze_roa_tree failed for %s: %s", data.get("ticker", "?"), e)
+
+    roe_results = {}
+    try:
+        roe_results = analyze_roe_tree(data)
+    except Exception as e:
+        logger.warning("analyze_roe_tree failed for %s: %s", data.get("ticker", "?"), e)
+
+    pbr_contrib = {}
+    try:
+        pbr_contrib = compute_pbr_contribution(roe_results, s_results, data, benchmark=benchmark)
+    except Exception as e:
+        logger.warning("compute_pbr_contribution failed for %s: %s", data.get("ticker", "?"), e)
+
+    evaluation_criteria = {}
+    try:
+        evaluation_criteria = generate_evaluation_criteria(benchmark)
+    except Exception as e:
+        logger.warning("generate_evaluation_criteria failed: %s", e)
+
     prof = INVESTOR_PROFILES.get(investor_profile, INVESTOR_PROFILES['balanced'])
 
     return {

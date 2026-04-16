@@ -138,11 +138,22 @@ def load_sample_data():
 
 def _build_analysis_response(data, ts_data, benchmark, investor_profile):
     """共通の分析実行・レスポンス構築ヘルパー。"""
-    result = run_full_analysis(data, benchmark=benchmark, investor_profile=investor_profile)
+    try:
+        result = run_full_analysis(data, benchmark=benchmark, investor_profile=investor_profile)
+    except ValueError as e:
+        # データ不足・型エラーなど想定内の失敗
+        raise
+    except Exception as e:
+        app.logger.exception("run_full_analysis unexpected error: %s", e)
+        raise RuntimeError("分析エンジンで予期しないエラーが発生しました") from e
+
     if ts_data:
         result['timeseries'] = ts_data
     if benchmark:
-        result['dynamic_thresholds'] = generate_dynamic_thresholds(benchmark, profile=investor_profile)
+        try:
+            result['dynamic_thresholds'] = generate_dynamic_thresholds(benchmark, profile=investor_profile)
+        except Exception as e:
+            app.logger.warning("generate_dynamic_thresholds failed: %s", e)
     return result
 
 
@@ -228,8 +239,13 @@ def analyze():
         investor_profile = request.form.get('investor_profile', 'balanced')
 
         return jsonify(_build_analysis_response(data, ts_data, benchmark, investor_profile))
+
     except ImportError as e:
         return _error_response('必要なライブラリが不足しています。管理者にお問い合わせください。', 500, e)
+    except ValueError as e:
+        return jsonify({'error': f'データ検証エラー: {str(e)}'}), 400
+    except RuntimeError as e:
+        return _error_response(str(e), 500, e)
     except Exception as e:
         err_msg = str(e)
         if 'openpyxl does not support' in err_msg or '.xls' in err_msg:
@@ -269,24 +285,39 @@ def fetch_ticker():
         investor_profile = body.get('investor_profile', 'balanced')
 
         return jsonify(_build_analysis_response(data, ts_data, benchmark, investor_profile))
+
     except ValueError as e:
-        # yfinance_parser が発生させる既知のエラー（データなし等）
+        err_msg = str(e)
         hint = (
-            'ヒント: 日本株は "7203.T"（末尾に .T）、米国株は "AAPL" のように入力してください。'
+            '日本株は "7203.T"（末尾に .T）、米国株は "AAPL" のように入力してください。'
             'ティッカーシンボルは Yahoo Finance で確認できます。'
         )
-        return jsonify({'error': f'データを取得できませんでした。{hint}'}), 400
+        if 'データを取得できません' in err_msg or 'No data' in err_msg:
+            return jsonify({'error': f'"{symbol}" のデータが見つかりませんでした。{hint}'}), 400
+        return jsonify({'error': f'データ検証エラー: {err_msg}'}), 400
+
+    except RuntimeError as e:
+        # _build_analysis_response が wrap した分析エンジンエラー
+        return _error_response(str(e), 500, e)
+
     except Exception as e:
         err_msg = str(e).lower()
-        if 'no data' in err_msg or 'delisted' in err_msg or 'not found' in err_msg:
+        if any(kw in err_msg for kw in ('no data', 'delisted', 'not found', '404')):
             return jsonify({
                 'error': (
-                    'ティッカーのデータが見つかりません。'
+                    f'"{symbol}" のデータが見つかりません。'
                     '上場廃止・シンボル変更の可能性があります。'
-                    '日本株は末尾に ".T"（例: 7203.T）、米国株はそのまま（例: AAPL）入力してください。'
+                    '日本株は末尾に ".T"（例: 7203.T）、米国株はそのまま（例: AAPL）。'
                 )
             }), 400
-        return _error_response('データ取得中にエラーが発生しました。しばらく待ってから再度お試しください。', 500, e)
+        if 'timeout' in err_msg or 'connection' in err_msg:
+            return jsonify({
+                'error': 'データ取得がタイムアウトしました。しばらく待ってから再試行してください。'
+            }), 503
+        return _error_response(
+            f'"{symbol}" の分析中にエラーが発生しました。しばらく待ってから再度お試しください。',
+            500, e
+        )
 
 
 @app.route('/api/sample')
