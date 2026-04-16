@@ -650,10 +650,37 @@ def parse_yfinance(ticker_symbol):
         except Exception as e:
             logger.warning("SEC EDGAR フォールバック (yfinance): %s", e)
 
+    # ── ETF / ファンド / 暗号通貨など非株式の弾き出し ─────────────────────────
+    _quote_type = info.get('quoteType', '')
+    _NON_EQUITY_TYPES = {'ETF', 'MUTUALFUND', 'INDEX', 'CRYPTOCURRENCY', 'FUTURE', 'OPTION'}
+    if _quote_type.upper() in _NON_EQUITY_TYPES:
+        type_label = {
+            'ETF': 'ETF（上場投資信託）',
+            'MUTUALFUND': '投資信託',
+            'INDEX': '株価指数',
+            'CRYPTOCURRENCY': '暗号通貨',
+            'FUTURE': '先物',
+            'OPTION': 'オプション',
+        }.get(_quote_type.upper(), _quote_type)
+        raise ValueError(
+            f"'{ticker_symbol}' は {type_label} です。"
+            "このアプリは個別株式（EQUITY）の分析専用です。"
+        )
+
     # ── データ存在チェック ───────────────────────────────────────────────────
     _has_yf = not ((inc_df is None or inc_df.empty) and (bs_df is None or bs_df.empty))
     if not _has_yf and _sec_data is None:
-        raise ValueError(f"ティッカー '{ticker_symbol}' のデータを取得できませんでした。シンボルを確認してください。")
+        # 上場廃止・シンボル誤り・データなし
+        _exchange = info.get('exchange', '')
+        if not _exchange and not info.get('regularMarketPrice'):
+            raise ValueError(
+                f"ティッカー '{ticker_symbol}' が見つかりません。"
+                "上場廃止またはシンボルの誤りの可能性があります。"
+            )
+        raise ValueError(
+            f"ティッカー '{ticker_symbol}' の財務データを取得できませんでした。"
+            "データが存在しないか、取得に失敗しました。"
+        )
 
     # ── 追加データ取得（yfinance: 株価・ESG・アナリスト等）──────────────────
     try:
@@ -695,14 +722,24 @@ def parse_yfinance(ticker_symbol):
         all_data.update(_s_cf)
         all_data.update(_s_inc)
 
-        # SEC が None 埋めのフィールドは yfinance データで補完
-        # （金融セクター株など標準 XBRL タグが異なる場合の対策）
+        # SEC が None のフィールド／要素を yfinance データで補完
+        # - 全Noneのフィールド: yfinanceで丸ごと置換（MS/BAC等の金融セクター対策）
+        # - 一部Noneのリスト: 要素単位で補完（NVDA/GOOGLの最新年欠損対策）
         yf_fallback = {**bs_data_yf, **cf_data_yf, **inc_data_yf}
         for k, v in yf_fallback.items():
-            if v and not all(x is None for x in v):
-                existing = all_data.get(k)
-                if not existing or all(x is None for x in existing):
-                    all_data[k] = v
+            if not v or all(x is None for x in v):
+                continue  # yfinance 側もデータなし → スキップ
+            existing = all_data.get(k)
+            if not existing:
+                all_data[k] = v
+            elif isinstance(existing, list) and isinstance(v, list):
+                # 要素単位でNoneをyfinanceで補完
+                merged = []
+                for i in range(max(len(existing), len(v))):
+                    ex_val = existing[i] if i < len(existing) else None
+                    yf_val = v[i] if i < len(v) else None
+                    merged.append(ex_val if ex_val is not None else yf_val)
+                all_data[k] = merged
     else:
         # yfinance フォールバック
         dates = inc_dates_yf or cf_dates_yf or bs_dates_yf
