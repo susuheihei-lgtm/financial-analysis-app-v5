@@ -110,7 +110,7 @@ def analyze_screening(d, q_results, benchmark=None, investor_profile='balanced')
     op_m = d.get("op_margin", [])
     if len(op_m) >= 3:
         op_now, op_idx = get_latest_value(op_m)
-        op_data_warning = op_idx > 0
+        op_data_warning = (op_idx or 0) > 0
         op_1y, op_2y = op_m[1], op_m[2]
         if op_now is not None and op_1y is not None and op_2y is not None:
             if op_now < op_1y and op_1y < op_2y:

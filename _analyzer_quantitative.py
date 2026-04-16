@@ -40,7 +40,7 @@ def analyze_quantitative(d, benchmark=None):
     # 売上高推移
     if rev and len(rev) >= 4:
         latest_rev, rev_idx = get_latest_value(rev)
-        data_warning = rev_idx > 0
+        data_warning = (rev_idx or 0) > 0
 
         r5 = rate_change(latest_rev, rev[3]) if latest_rev else None
         r3 = rate_change(latest_rev, rev[2]) if latest_rev else None
@@ -134,7 +134,7 @@ def analyze_quantitative(d, benchmark=None):
     # ROE
     if roe and len(roe) >= 3:
         roe_now, roe_idx = get_latest_value(roe)
-        roe_data_warning = roe_idx > 0
+        roe_data_warning = (roe_idx or 0) > 0
         roe_3y, roe_5y_val = roe[1], roe[2]
         roe_growth = d.get("roe_growth_rate")
         c3 = roe_now > roe_3y if (roe_now is not None and roe_3y is not None) else None
@@ -184,7 +184,7 @@ def analyze_quantitative(d, benchmark=None):
     # ROA
     if roa and len(roa) >= 3:
         roa_now, roa_idx = get_latest_value(roa)
-        roa_data_warning = roa_idx > 0
+        roa_data_warning = (roa_idx or 0) > 0
         roa_3y, roa_5y_val = roa[1], roa[2]
         results["ROA"] = {
             "現在値": roa_now,
@@ -317,7 +317,7 @@ def analyze_quantitative(d, benchmark=None):
     # 営業利益率推移
     if op_margin and len(op_margin) >= 1:
         opm_now, opm_idx = get_latest_value(op_margin)
-        opm_data_warning = opm_idx > 0
+        opm_data_warning = (opm_idx or 0) > 0
         opm_5y = op_margin[4] if len(op_margin) >= 5 else None
         opm_chg = opm_now - opm_5y if (opm_now is not None and opm_5y is not None) else None
         results["営業利益率Q"] = {"現在値": opm_now, "5年変化pt": opm_chg, "data_warning": opm_data_warning}

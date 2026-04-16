@@ -646,7 +646,7 @@
         </div>
         <div id="customContent" class="hidden">
           <div class="flex items-center justify-between mb-6">
-            <h3 class="text-sm font-bold th-text-s" data-i18n="Custom Analysis">Custom Analysis</h3>
+            <h3 class="v0-section-label" data-i18n="Custom Analysis">Custom Analysis</h3>
             <button id="btnEditChecklist" class="px-4 py-2 font-plex-mono text-[10px] font-medium uppercase tracking-[0.15em] border transition-all" style="border-radius:0;border-color:var(--border-s)" onmouseover="this.style.borderColor='var(--accent-v0)';this.style.color='var(--accent-v0)'" onmouseout="this.style.borderColor='var(--border-s)';this.style.color=''">
               <span data-i18n="Edit Selection">Edit Selection</span>
             </button>
@@ -680,6 +680,7 @@
       <div id="tab-roe" class="tab-content hidden" role="tabpanel" aria-labelledby="tab-roe-btn"><div id="roeTree"></div></div>
 
       <div id="tab-charts" class="tab-content hidden" role="tabpanel" aria-labelledby="tab-charts-btn">
+        <h3 class="v0-section-label mb-6" data-i18n="Time Series">Time Series</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="th-bg-1 p-4 sm:p-6 border th-border" style="border-radius:0"><h4 class="font-plex-mono text-[9px] font-semibold uppercase tracking-[0.22em] th-text-m mb-4" data-i18n="Revenue">Revenue</h4><canvas id="chartRevenue" role="img" aria-label="Revenue time series chart"></canvas></div>
           <div class="th-bg-1 p-4 sm:p-6 border th-border" style="border-radius:0"><h4 class="font-plex-mono text-[9px] font-semibold uppercase tracking-[0.22em] th-text-m mb-4" data-i18n="Net Income">Net Income</h4><canvas id="chartNetIncome" role="img" aria-label="Net income time series chart"></canvas></div>
@@ -693,7 +694,8 @@
       <!-- Competitor Analysis Tab -->
       <div id="tab-competitor" class="tab-content hidden" role="tabpanel" aria-labelledby="tab-competitor-btn">
         <div id="competitorUpload" class="mb-8">
-          <p class="text-sm font-medium th-text-s mb-6" data-i18n="comp-upload-msg">Enter ticker symbols or upload Excel files for up to 5 companies to compare</p>
+          <h3 class="v0-section-label mb-4" data-i18n="Competitor Analysis">Competitor Analysis</h3>
+          <p class="font-plex-mono text-[11px] th-text-m mb-6 tracking-wide" data-i18n="comp-upload-msg">Enter ticker symbols or upload Excel files for up to 5 companies to compare</p>
           <div id="competitorSlots" class="space-y-2">
             <div class="comp-slot flex flex-wrap sm:flex-nowrap items-center gap-3 p-4 th-bg-1 border th-border" style="border-radius:0" data-slot="0" data-mode="ticker">
               <span class="text-xs font-bold tracking-[0.2em] w-6 text-center" style="color:var(--accent-v0);font-family:'IBM Plex Mono','Courier New',monospace">01</span>
@@ -2023,7 +2025,7 @@
       return `
         <div class="mt-12 pt-8 border-t" style="border-color:var(--border)">
           <div class="text-center mb-6">
-            <p class="text-[10px] uppercase tracking-[0.2em] th-text-m mb-2">${t('PBR Driver Analysis')}</p>
+            <p class="v0-section-label mb-2">${t('PBR Driver Analysis')}</p>
             <p class="text-lg font-bold th-text mb-1">${pbrChgText}</p>
             <p class="text-xs th-text-m">PBR = ROE × PER / 100 — ${t('5年間の各要因がPBRに与えた影響を分解')}</p>
             ${pbrEvalBadge}
@@ -2089,7 +2091,7 @@
       $('roeTree').innerHTML = `
         <!-- ===== PBR = ROE × PER (top level) ===== -->
         <div class="text-center mb-6">
-          <p class="text-[10px] uppercase tracking-[0.2em] th-text-m mb-2">${t('PBR Decomposition')}</p>
+          <p class="v0-section-label mb-2">${t('PBR Decomposition')}</p>
           <div class="inline-block px-14 py-6 th-bg-2 border-2" style="border-color:var(--brand);border-radius:0">
             <p class="text-[10px] uppercase tracking-[0.2em] th-text-m mb-1" style="font-family:'IBM Plex Mono','Courier New',monospace">PBR</p>
             <p class="text-5xl font-bold tabular-nums" style="color:var(--brand);font-family:'IBM Plex Mono','Courier New',monospace">${fmtNum(pbrVal,2)}<span class="text-2xl th-text-m">x</span></p>
@@ -2147,7 +2149,7 @@
 
         <!-- ===== ROE DuPont Decomposition ===== -->
         <div class="mb-6">
-          <p class="text-[10px] uppercase tracking-[0.2em] th-text-m mb-2 text-center">${t('ROE DuPont Decomposition')}</p>
+          <p class="v0-section-label mb-2 text-center">${t('ROE DuPont Decomposition')}</p>
           <div class="flex flex-wrap justify-center gap-x-4 gap-y-1 text-[11px] th-text-m mb-6">
             <span>ROE <strong class="th-text">${fmtNum(roeVal,1)}%</strong></span>
             <span>=</span>
@@ -2290,7 +2292,7 @@
         if (gapCanvas && (ts.interest_burden || ts.nonop_burden || ts.tax_burden)) {
           const mkDs = (label, key, color) => ({
             label, data: (ts[key]||[]).slice().reverse(), borderColor: color,
-            backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 2, tension: 0.3
+            backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 2, tension: 0
           });
           new Chart(gapCanvas, {
             type: 'line',
@@ -2386,7 +2388,7 @@
           x: { grid: { display: false }, ticks: { font: { size: 9 }, color: chartText, maxRotation: 45 } },
           y: { grid: { color: chartGridY }, ticks: { font: { size: 9 }, color: chartText, callback: v => smartFormat(v) } },
         },
-        elements: { point: { radius: 2, hoverRadius: 4 }, line: { tension: 0.4, borderWidth: 2 } },
+        elements: { point: { radius: 2, hoverRadius: 4 }, line: { tension: 0, borderWidth: 2 } },
       };
 
       // % axis opts (for ROE/ROA)
@@ -2397,7 +2399,7 @@
 
       function areaLine(id, label, data, color) {
         charts[id] = new Chart($(id), { type: 'line', data: { labels: dates, datasets: [{
-          label, data, borderColor: color, backgroundColor: color + '18', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.4,
+          label, data, borderColor: color, backgroundColor: color + '18', fill: true, borderWidth: 2, pointRadius: 2, tension: 0,
         }] }, options: opts });
       }
       function multiLine(id, datasets, useOpts) {
@@ -2410,14 +2412,14 @@
       areaLine('chartEPS', 'EPS', tsR.eps, '#f59e0b');
 
       multiLine('chartROE', [
-        { label: 'ROE (%)', data: tsR.roe, borderColor: '#D4852A', backgroundColor: 'rgba(212,133,42,0.05)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.4 },
-        { label: 'ROA (%)', data: tsR.roa, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.05)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.4 },
+        { label: 'ROE (%)', data: tsR.roe, borderColor: '#D4852A', backgroundColor: 'rgba(212,133,42,0.05)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
+        { label: 'ROA (%)', data: tsR.roa, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.05)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
       ], pctOpts);
 
       multiLine('chartBS', [
-        { label: t('Total Assets'), data: tsR.total_assets, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.4 },
-        { label: t('Equity'), data: tsR.total_equity, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.08)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.4 },
-        { label: t('Debt'), data: tsR.total_debt, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.4 },
+        { label: t('Total Assets'), data: tsR.total_assets, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
+        { label: t('Equity'), data: tsR.total_equity, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.08)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
+        { label: t('Debt'), data: tsR.total_debt, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
       ]);
     }
 
@@ -2593,7 +2595,7 @@
         { key: 'roic', label: 'ROIC', fmt: v => v != null ? v.toFixed(1) + '%' : '—' },
       ];
 
-      let thtml = `<h3 class="text-sm font-bold th-text-s mb-4" data-i18n="comp-summary-title">${t('comp-summary-title')}</h3>`;
+      let thtml = `<h3 class="v0-section-label mb-4">${t('comp-summary-title')}</h3>`;
       thtml += `<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="border-b th-border">`;
       thtml += `<th class="text-left py-3 px-2 th-text-m font-medium">${t('Metrics')}</th>`;
       companies.forEach((c, i) => {

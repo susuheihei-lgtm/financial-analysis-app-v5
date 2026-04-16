@@ -682,6 +682,11 @@ def parse_yfinance(ticker_symbol):
         dividends_series = None
 
     # ── 財務データ抽出 ────────────────────────────────────────────────────────
+    # yfinance データを先に抽出（SEC が None のフィールドへのフォールバック用）
+    inc_data_yf, inc_dates_yf = _extract_series(inc_df, _INCOME_MAP)
+    cf_data_yf,  cf_dates_yf  = _extract_series(cf_df,  _CASHFLOW_MAP)
+    bs_data_yf,  bs_dates_yf  = _extract_series(bs_df,  _BALANCE_MAP)
+
     if _sec_data is not None:
         # SEC EDGAR の公式データを使用
         _s_inc, _s_bs, _s_cf, dates = _sec_data
@@ -689,17 +694,22 @@ def parse_yfinance(ticker_symbol):
         all_data.update(_s_bs)
         all_data.update(_s_cf)
         all_data.update(_s_inc)
+
+        # SEC が None 埋めのフィールドは yfinance データで補完
+        # （金融セクター株など標準 XBRL タグが異なる場合の対策）
+        yf_fallback = {**bs_data_yf, **cf_data_yf, **inc_data_yf}
+        for k, v in yf_fallback.items():
+            if v and not all(x is None for x in v):
+                existing = all_data.get(k)
+                if not existing or all(x is None for x in existing):
+                    all_data[k] = v
     else:
         # yfinance フォールバック
-        inc_data, inc_dates = _extract_series(inc_df, _INCOME_MAP)
-        cf_data, cf_dates = _extract_series(cf_df, _CASHFLOW_MAP)
-        bs_data, bs_dates = _extract_series(bs_df, _BALANCE_MAP)
-
-        dates = inc_dates or cf_dates or bs_dates
+        dates = inc_dates_yf or cf_dates_yf or bs_dates_yf
         all_data = {}
-        all_data.update(bs_data)
-        all_data.update(cf_data)
-        all_data.update(inc_data)  # incが最優先
+        all_data.update(bs_data_yf)
+        all_data.update(cf_data_yf)
+        all_data.update(inc_data_yf)  # incが最優先
 
     def g(key, idx=0):
         lst = all_data.get(key, [])
