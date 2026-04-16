@@ -90,12 +90,12 @@
     .scrollbar-hide::-webkit-scrollbar { display: none; }
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-    /* Grade colors */
-    .grade-excellent { color: #22c55e; }
-    .grade-good { color: #3b82f6; }
-    .grade-warning { color: #f59e0b; }
-    .grade-danger { color: #ef4444; }
-    .grade-na { color: #6b7280; }
+    /* Grade colors — 4段階統一: ◎ accent / ○ green / ▲ amber / × red */
+    .grade-excellent { color: #D4852A; }
+    .grade-good      { color: #4ade80; }
+    .grade-warning   { color: #fbbf24; }
+    .grade-danger    { color: #f87171; }
+    .grade-na        { color: #6b7280; }
 
     /* Verdict cards */
     .verdict-buy  { background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); color: #d1fae5; border: 1px solid rgba(34,197,94,0.2); }
@@ -1431,14 +1431,33 @@
       });
     });
 
-    // Helpers
-    function gradeIcon(s) {
-      if (s === '◎') return `<span class="grade-excellent text-lg">&#9679;</span>`;
-      if (s === '○') return `<span class="grade-good text-lg">&#9679;</span>`;
-      if (s === '▲') return `<span class="grade-warning text-lg">&#9650;</span>`;
-      if (s === '×') return `<span class="grade-danger text-lg">&#10005;</span>`;
-      return `<span class="grade-na text-lg">&#8212;</span>`;
+    // ── 評価グレード統一レンダラー ─────────────────────────────────────────────
+    // カラー体系: ◎ #D4852A / ○ #4ade80 / ▲ #fbbf24 / × #f87171 / — #6b7280
+    const _GRADE_CFG = {
+      '◎': { cls: 'grade-excellent', bg: 'rgba(212,133,42,0.18)',  fg: '#D4852A', icon: '&#9679;',  label: '◎' },
+      '○': { cls: 'grade-good',      bg: 'rgba(74,222,128,0.18)', fg: '#4ade80', icon: '&#9679;',  label: '○' },
+      '▲': { cls: 'grade-warning',   bg: 'rgba(251,191,36,0.18)', fg: '#fbbf24', icon: '&#9650;',  label: '▲' },
+      '×': { cls: 'grade-danger',    bg: 'rgba(248,113,113,0.18)',fg: '#f87171', icon: '&#10005;', label: '✕' },
+    };
+    function gradeColor(g) {
+      return (_GRADE_CFG[g] || {}).fg || '#6b7280';
     }
+    // size='lg': 大アイコン（指標カード左端）/ size='sm': 小バッジ（サブ項目右端）
+    function renderGrade(g, size = 'lg') {
+      const cfg = _GRADE_CFG[g];
+      if (!cfg) {
+        return size === 'lg'
+          ? `<span class="grade-na text-lg">&#8212;</span>`
+          : `<span class="text-[10px] px-1.5 py-0.5" style="background:rgba(107,114,128,0.15);color:#6b7280;font-family:'IBM Plex Mono',monospace">—</span>`;
+      }
+      if (size === 'lg') {
+        return `<span class="${cfg.cls} text-lg">${cfg.icon}</span>`;
+      }
+      // sm: pill badge
+      return `<span class="text-[10px] px-1.5 py-0.5" style="background:${cfg.bg};color:${cfg.fg};font-family:'IBM Plex Mono',monospace">${cfg.label}</span>`;
+    }
+    // 後方互換ラッパー
+    function gradeIcon(s) { return renderGrade(s, 'lg'); }
     function fmtNum(v, d = 2, s = '') { if (v === null || v === undefined || isNaN(v)) return t('No Data'); return Number(v).toFixed(d) + s; }
     function fmt5Y(val, decimals, unit) {
       if (val !== undefined && val !== null && !isNaN(val)) return `5Y: ${fmtNum(val, decimals)}${unit}`;
@@ -1680,15 +1699,12 @@
       </div>`;
     }
 
-    function judgeBadge(j) {
-      if (!j || j === '未入力') return `<span class="text-[10px] px-1.5 py-0.5 rounded" style="background:rgba(156,163,175,0.15);color:#9ca3af">—</span>`;
-      if (j === '×') return `<span class="text-[10px] px-1.5 py-0.5 rounded" style="background:rgba(239,68,68,0.15);color:#ef4444">×</span>`;
-      if (j === '▲') return `<span class="text-[10px] px-1.5 py-0.5 rounded" style="background:rgba(245,158,11,0.15);color:#f59e0b">▲</span>`;
-      return `<span class="text-[10px] px-1.5 py-0.5 rounded" style="background:rgba(34,197,94,0.15);color:#22c55e">○</span>`;
-    }
+    function judgeBadge(j) { return renderGrade(j, 'sm'); }
     function makeSectionScore(el, label, weight, eval_text, score, subItems) {
-      const isDanger = eval_text.includes('×'), isWarn = eval_text.includes('▲');
-      const accent = isDanger ? '#ef4444' : (isWarn ? '#f59e0b' : '#22c55e');
+      const isDanger  = eval_text.includes('×');
+      const isWarn    = eval_text.includes('▲');
+      const isExcellent = eval_text.includes('◎');
+      const accent = isDanger ? '#f87171' : isWarn ? '#fbbf24' : isExcellent ? '#D4852A' : '#4ade80';
       const maxScore = parseInt(weight) * 5;
       const pct = Math.min((score / maxScore) * 100, 100);
       const subHtml = (subItems || []).map(si =>
@@ -1848,7 +1864,7 @@
       const qInv = q['投資CF']||{}, qFin = q['財務CF']||{};
       const cfPat = q['CF構成分析']||{};
       const patIcon = cfPat['理想型'] ? '◎' : '⚠';
-      const patColor = cfPat['理想型'] ? '#22c55e' : '#f59e0b';
+      const patColor = cfPat['理想型'] ? '#4ade80' : '#fbbf24';
       $('cfItems').innerHTML = [
         makeItemCard(t('営業CF推移'), qCf['評価']||cfItem['判定'], qCf['最新値']!==undefined?smartFormat(qCf['最新値']):(cfItem['状況']||'—'), fmt5Y(qCf['5年変化率'],1,'%'), 'ocf', cfItem['基準']),
         makeItemCard(t('FCF推移'), qFcf['評価'], qFcf['最新値']!==undefined?smartFormat(qFcf['最新値']):'', fmt5Y(qFcf['5年変化率'],1,'%'), 'fcf', undefined, qFcf['欠損理由']),
@@ -1882,10 +1898,10 @@
           ? ` | ${t('Target Price')}: ${fmtNum(analystTarget, 1)} ${analystUpside !== null && analystUpside !== undefined ? `(${analystUpside >= 0 ? '+' : ''}${fmtNum(analystUpside, 1)}%)` : ''}`
           : '';
         const consensusLabel = t(analystConsensus) || analystConsensus;
-        const consensusColor = analystConsensus === 'Strong Buy' ? '#22c55e'
-          : analystConsensus === 'Buy' ? '#86efac'
-          : analystConsensus === 'Sell' ? '#ef4444'
-          : '#f59e0b';
+        const consensusColor = analystConsensus === 'Strong Buy' ? '#D4852A'
+          : analystConsensus === 'Buy' ? '#4ade80'
+          : analystConsensus === 'Sell' ? '#f87171'
+          : '#fbbf24';
         analystCard = `<div class="sortable-item flex items-center justify-between p-4 th-bg-1 border" style="border-color:var(--border);border-radius:0" draggable="true">
           <div class="flex items-center gap-3">
             <span class="text-[10px] th-text-d cursor-grab drag-handle" style="margin-right:-4px">⠿</span>
@@ -1979,7 +1995,7 @@
         const pbrImpact = item['PBR寄与度'];
         const roeContrib = item['ROE寄与度pt'];
         const barWidth = maxAbs > 0 ? Math.min(Math.abs(pbrImpact) / maxAbs * 100, 100) : 0;
-        const color = isUp ? '#22c55e' : '#ef4444';
+        const color = isUp ? '#4ade80' : '#f87171';
         const bgColor = isUp ? 'bg-green-500/5 border-green-500/10' : 'bg-red-500/5 border-red-500/10';
         const badgeColor = isUp ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400';
         const textColor = isUp ? 'text-green-400' : 'text-red-400';
@@ -2012,10 +2028,10 @@
       // PBR evaluation badge
       const pbrEval = pbr ? (pbr.pbr_eval || t('データなし')) : t('データなし');
       const pbrRange = pbr ? (pbr.pbr_range || '—') : '—';
-      const pbrEvalColor = pbrEval === '割安' || pbrEval === t('割安') || pbrEval === 'やや割安' || pbrEval === t('やや割安') ? '#22c55e'
-        : pbrEval === '適正水準' || pbrEval === t('適正水準') ? '#3b82f6'
-        : pbrEval === 'やや割高' || pbrEval === t('やや割高') ? '#f59e0b'
-        : pbrEval === 'データなし' || pbrEval === t('データなし') ? '#9ca3af' : '#ef4444';
+      const pbrEvalColor = pbrEval === '割安' || pbrEval === t('割安') || pbrEval === 'やや割安' || pbrEval === t('やや割安') ? '#D4852A'
+        : pbrEval === '適正水準' || pbrEval === t('適正水準') ? '#4ade80'
+        : pbrEval === 'やや割高' || pbrEval === t('やや割高') ? '#fbbf24'
+        : pbrEval === 'データなし' || pbrEval === t('データなし') ? '#6b7280' : '#f87171';
       const pbrEvalBadge = `<div class="mt-2"><span class="text-[10px] px-3 py-1 font-bold tracking-wider uppercase" style="background:${pbrEvalColor}20;color:${pbrEvalColor};border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace">${t(pbrEval)}</span><span class="text-[10px] th-text-m ml-2">${t('適正レンジ')}: ${pbrRange}</span></div>`;
 
       // PBR 5Y change summary
@@ -2065,7 +2081,7 @@
 
     function renderROETree(re, r) {
       const node = (label, val, chg, grade, unit='', benchField, benchMul, benchInvert) => {
-        const clr = grade==='改善'?'#22c55e':(grade==='悪化'?'#ef4444':'#9ca3af');
+        const clr = grade==='改善'?'#4ade80':(grade==='悪化'?'#f87171':'#6b7280');
         const arrow = grade==='改善'?'&#9650;':(grade==='悪化'?'&#9660;':'');
         const bb = benchField ? benchBadge(benchField, benchMul, unit, benchInvert) : '';
         return `<div class="flex items-center justify-between p-3 th-bg-2 border mb-2" style="border-color:var(--border);border-radius:0">
@@ -2095,7 +2111,7 @@
           <div class="inline-block px-14 py-6 th-bg-2 border-2" style="border-color:var(--brand);border-radius:0">
             <p class="text-[10px] uppercase tracking-[0.2em] th-text-m mb-1" style="font-family:'IBM Plex Mono','Courier New',monospace">PBR</p>
             <p class="text-5xl font-bold tabular-nums" style="color:var(--brand);font-family:'IBM Plex Mono','Courier New',monospace">${fmtNum(pbrVal,2)}<span class="text-2xl th-text-m">x</span></p>
-            <p class="text-xs mt-2">${pbrData['判定']==='○'?`<span class="text-green-500">${t('適正水準')}</span>`:pbrData['判定']==='◎'?`<span class="text-green-500">${t('割安')}</span>`:pbrData['判定']==='▲'?`<span class="text-amber-500">${t('やや割高')}</span>`:pbrData['判定']==='×'?`<span class="text-red-500">${t('割高')}</span>`:'<span class="th-text-m">—</span>'}</p>
+            <p class="text-xs mt-2">${(j=>({'◎':t('割安'),'○':t('適正水準'),'▲':t('やや割高'),'×':t('割高')}[j]?`<span style="color:${gradeColor(j)}">${{'◎':t('割安'),'○':t('適正水準'),'▲':t('やや割高'),'×':t('割高')}[j]}</span>`:'<span class="th-text-m">—</span>'))(pbrData['判定'])}</p>
             <p class="text-[11px] th-text-m mt-1">${t('5Y Change:')} <span class="${pbrChg>0?'text-green-400':pbrChg<0?'text-red-400':'th-text-m'}">${pbrChg!==null?((pbrChg>0?'+':'')+fmtNum(pbrChg,2)+'x'):'—'}</span></p>
             ${benchBadge('pbr', null, 'x')}
           </div>
@@ -2136,7 +2152,7 @@
             </div>
             <div class="flex items-baseline gap-2 mb-1">
               <p class="text-3xl font-bold tabular-nums" style="font-family:'IBM Plex Mono','Courier New',monospace">${roeVal !== null && roeVal !== undefined ? fmtNum(roeVal,1) : '—'}<span class="text-lg th-text-m">%</span></p>
-              <span id="roeYearBadge" class="text-[9px] px-2 py-0.5 tracking-wider" style="background:rgba(34,197,94,0.15);color:#22c55e;border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace"></span>
+              <span id="roeYearBadge" class="text-[9px] px-2 py-0.5 tracking-wider" style="background:rgba(74,222,128,0.15);color:#4ade80;border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace"></span>
             </div>
             <p class="text-[10px] th-text-m mb-1">${t('roe-desc')}</p>
             <div class="mb-1">${benchBadge(benchmarkRegion === 'japan' ? 'roe_japan' : 'roe_global', 100, '%')}</div>
