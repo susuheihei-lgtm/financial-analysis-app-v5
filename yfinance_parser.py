@@ -442,33 +442,60 @@ def _assess_esg(sustainability_df):
 
 
 def _assess_ownership(major_holders_df):
-    """機関投資家保有比率から株主構造スコアを返す ("○"/"▲"/"×")。"""
+    """機関投資家保有比率から株主構造スコアを返す ("○"/"▲"/"×")。
+    yfinance の major_holders は新旧2形式に対応:
+      新形式: index=文字列('institutionsPercentHeld'等), columns=['Value']
+      旧形式: index=整数(0,1,2,3), columns=[0,1] (値, ラベル)
+    """
     if major_holders_df is None or major_holders_df.empty:
         return "○"
     try:
-        # major_holders の行構成: 0=insider%, 1=institution%, 2=float%, 3=outstanding%
         inst_pct = None
         insider_pct = None
-        for idx in major_holders_df.index:
-            row_label = str(major_holders_df.iloc[idx, 1]).lower() if major_holders_df.shape[1] > 1 else ""
-            val_str = str(major_holders_df.iloc[idx, 0])
-            val = float(val_str.replace('%', '')) / 100 if '%' in val_str else float(val_str)
-            if 'institution' in row_label:
-                inst_pct = val
-            elif 'insider' in row_label:
-                insider_pct = val
 
+        # ── 新形式: 文字列インデックス ────────────────────────────────────
+        if major_holders_df.index.dtype == object:
+            idx_lower = {str(i).lower(): i for i in major_holders_df.index}
+            # 機関投資家比率
+            for key in ('institutionspercentheld', 'institutionsfloatpercentheld'):
+                if key in idx_lower:
+                    try:
+                        inst_pct = float(major_holders_df.loc[idx_lower[key], 'Value'])
+                        break
+                    except (KeyError, ValueError, TypeError):
+                        pass
+            # インサイダー比率
+            for key in ('insiderspercentheld',):
+                if key in idx_lower:
+                    try:
+                        insider_pct = float(major_holders_df.loc[idx_lower[key], 'Value'])
+                    except (KeyError, ValueError, TypeError):
+                        pass
+
+        # ── 旧形式: 整数インデックス + 2列 ──────────────────────────────
+        else:
+            for pos in range(len(major_holders_df)):
+                try:
+                    row_label = str(major_holders_df.iloc[pos, 1]).lower() if major_holders_df.shape[1] > 1 else ""
+                    val_str = str(major_holders_df.iloc[pos, 0])
+                    val = float(val_str.replace('%', '')) / 100 if '%' in val_str else float(val_str)
+                    if 'institution' in row_label:
+                        inst_pct = val
+                    elif 'insider' in row_label:
+                        insider_pct = val
+                except (ValueError, TypeError):
+                    continue
+
+        # フォールバック: 最初の数値行
         if inst_pct is None:
-            # フォールバック: 最初の数値行
             try:
-                val_str = str(major_holders_df.iloc[1, 0])
-                val = float(val_str.replace('%', '')) / 100 if '%' in val_str else float(val_str)
+                val = float(major_holders_df.iloc[1, 0] if major_holders_df.shape[1] > 1
+                            else major_holders_df.iloc[1]['Value'])
                 inst_pct = val
-            except (IndexError, ValueError, TypeError) as e:
+            except (IndexError, ValueError, TypeError, KeyError) as e:
                 logger.warning("_assess_ownership: フォールバック行取得失敗: %s", e)
 
         if inst_pct is not None:
-            # 機関投資家比率が高い = 透明性が高い・ガバナンス良好
             if inst_pct >= 0.50:
                 return "○"
             elif inst_pct >= 0.20:
