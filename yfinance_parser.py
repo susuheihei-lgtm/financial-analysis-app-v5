@@ -1035,12 +1035,12 @@ def parse_yfinance(ticker_symbol):
         except Exception:
             pass
 
-    # ── PER/PBR 5年履歴（株価履歴×EPS/BPSで計算）────────────────────────────
+    # ── PER/PBR 履歴（株価履歴×EPS/BPSで計算）────────────────────────────────
     shares_out = _safe(info.get('sharesOutstanding') or info.get('impliedSharesOutstanding'))
 
     per_ts = []
     pbr_ts = []
-    for i in range(min(5, n)):
+    for i in range(n):
         price_y = _get_year_end_price(hist_df, dates[i], is_jpy) if dates and i < len(dates) else None
         # PER = 株価 / EPS
         eps_y = g('eps', i) or g('eps_diluted', i)
