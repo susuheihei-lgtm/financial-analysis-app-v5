@@ -49,7 +49,9 @@ _SEC_FACTS_TTL: float = 3600.0  # 1時間
 
 # SEC XBRL コンセプト → 内部キー マッピング
 _SEC_INCOME_TAGS = {
-    'revenue': ['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet'],
+    'revenue': ['RevenueFromContractWithCustomerExcludingAssessedTax', 'Revenues', 'SalesRevenueNet',
+                'SalesRevenueGoodsNet', 'SalesRevenueServicesNet', 'RevenueNet',
+                'SalesRevenue', 'RevenueFromContractWithCustomerIncludingAssessedTax'],
     'cogs': ['CostOfGoodsAndServicesSold', 'CostOfRevenue', 'CostOfGoodsSold'],
     'gross_profit': ['GrossProfit'],
     'op_income': ['OperatingIncomeLoss'],
@@ -227,7 +229,10 @@ def _fetch_sec_facts(cik_padded: str) -> dict | None:
 def _get_sec_annual_series(
     us_gaap: dict, concept_names: list[str], unit_key: str = 'USD', max_years: int = 11
 ) -> list[tuple[int, float]]:
-    """10-K の FY エントリを [(fiscal_year, value), ...] で新しい順に返す"""
+    """10-K の FY エントリを [(fiscal_year, value), ...] で新しい順に返す。
+    複数タグをマージして年別に補完する（優先度: concept_names の先頭タグが高）。
+    """
+    merged: dict[int, dict] = {}
     for concept in concept_names:
         if concept not in us_gaap:
             continue
@@ -235,10 +240,11 @@ def _get_sec_annual_series(
         if not entries:
             continue
 
-        # 10-K / FY のみ → fy でグループ化（最新filed優先）
+        # 10-K のみ → fy でグループ化（最新filed優先）
+        # fp == 'FY' は古い報告書では 'Q4' や空の場合もあるため form のみでフィルタ
         by_fy: dict[int, dict] = {}
         for e in entries:
-            if e.get('form') != '10-K' or e.get('fp') != 'FY':
+            if e.get('form') != '10-K':
                 continue
             fy = e.get('fy')
             if fy is None:
@@ -247,12 +253,15 @@ def _get_sec_annual_series(
             if prev is None or e.get('filed', '') > prev.get('filed', ''):
                 by_fy[fy] = e
 
-        if not by_fy:
-            continue
+        # 優先タグにないFYのみ補完（先頭タグ優先）
+        for fy, e in by_fy.items():
+            if fy not in merged:
+                merged[fy] = e
 
-        result = sorted(by_fy.items(), key=lambda x: x[0], reverse=True)[:max_years]
-        return [(fy, e['val']) for fy, e in result]
-    return []
+    if not merged:
+        return []
+    result = sorted(merged.items(), key=lambda x: x[0], reverse=True)[:max_years]
+    return [(fy, e['val']) for fy, e in result]
 
 def parse_edgar_us(ticker_symbol: str) -> tuple[dict, dict, dict, list[str]] | None:
     """
