@@ -2267,7 +2267,7 @@
 
         if (perCanvas && ts.pe_ratio && ts.pe_ratio.length > 0) {
           new Chart(perCanvas, { ...miniOpts('#D4852A', metricFmt('pe_ratio')), data: {
-            labels: dates, datasets: [{ data: ts.pe_ratio.slice().reverse(), backgroundColor: '#D4852A33', borderColor: '#D4852A', borderWidth: 1, borderRadius: 2 }]
+            labels: dates, datasets: [{ data: ts.pe_ratio.slice().reverse(), backgroundColor: '#D4852A33', borderColor: '#D4852A', borderWidth: 1.5, borderRadius: 0 }]
           }});
         } else if (perChartContainer) {
           perChartContainer.innerHTML = `<div class="flex items-center justify-center gap-2 p-3 border border-yellow-500/20 bg-yellow-500/5" style="border-radius:0"><span class="text-yellow-400">⚠</span><p class="text-[10px] th-text-m">${t('時系列データなし')}</p></div>`;
@@ -2284,7 +2284,7 @@
 
         if (roeCanvas && ts.roe && ts.roe.length > 0) {
           new Chart(roeCanvas, { ...miniOpts('#22c55e', metricFmt('roe')), data: {
-            labels: dates, datasets: [{ data: ts.roe.slice().reverse(), backgroundColor: '#22c55e33', borderColor: '#22c55e', borderWidth: 1, borderRadius: 2 }]
+            labels: dates, datasets: [{ data: ts.roe.slice().reverse(), backgroundColor: '#22c55e33', borderColor: '#22c55e', borderWidth: 1.5, borderRadius: 0 }]
           }});
         } else if (roeChartContainer) {
           roeChartContainer.innerHTML = `<div class="flex items-center justify-center gap-2 p-3 border border-yellow-500/20 bg-yellow-500/5" style="border-radius:0"><span class="text-yellow-400">⚠</span><p class="text-[10px] th-text-m">${t('時系列データなし')}</p></div>`;
@@ -2299,7 +2299,7 @@
           const canvas = document.getElementById(id);
           if (canvas && ts[key]) {
             new Chart(canvas, { ...miniOpts(color, metricFmt(key)), data: {
-              labels: dates, datasets: [{ data: ts[key].slice().reverse(), backgroundColor: color + '33', borderColor: color, borderWidth: 1, borderRadius: 2 }]
+              labels: dates, datasets: [{ data: ts[key].slice().reverse(), backgroundColor: color + '33', borderColor: color, borderWidth: 1.5, borderRadius: 0 }]
             }});
           }
         });
@@ -2423,9 +2423,9 @@
       }
 
       areaLine('chartRevenue', t('Revenue'), tsR.revenue, '#D4852A');
-      areaLine('chartNetIncome', t('Net Income'), tsR.net_income, '#22c55e');
-      areaLine('chartFCF', 'FCF', tsR.fcf, '#8b5cf6');
-      areaLine('chartEPS', 'EPS', tsR.eps, '#f59e0b');
+      areaLine('chartNetIncome', t('Net Income'), tsR.net_income, '#D4852A');
+      areaLine('chartFCF', 'FCF', tsR.fcf, '#D4852A');
+      areaLine('chartEPS', 'EPS', tsR.eps, '#D4852A');
 
       multiLine('chartROE', [
         { label: 'ROE (%)', data: tsR.roe, borderColor: '#D4852A', backgroundColor: 'rgba(212,133,42,0.05)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
@@ -3051,12 +3051,15 @@
           const checked = selectedMetrics.has(m.key) ? 'checked' : '';
           const label = currentLang === 'ja' ? m.ja : m.en;
           const latestStr = m.latest !== null && m.latest !== undefined ? ` (${fmtNum(m.latest,1)})` : '';
-          html += `<label class="flex items-center gap-3 p-3 th-bg-2 border cursor-pointer transition-all" style="border-color:var(--border);border-radius:0">
+          const canViz = !!getChartData(m.key);
+          const vizStyle = canViz ? '' : 'opacity:0.4;';
+          const vizTitle = canViz ? '' : ` title="${currentLang === 'ja' ? '時系列チャート非対応' : 'No chart available'}"`;
+          html += `<label class="flex items-center gap-3 p-3 th-bg-2 border cursor-pointer transition-all" style="border-color:var(--border);border-radius:0;${vizStyle}"${vizTitle}>
             <input type="checkbox" class="metric-cb accent-brand" data-key="${m.key}" ${checked}>
             <div>
-              <span class="text-xs font-medium th-text-s">${label}</span>
-              <span class="text-[10px] th-text-m">${m.unit}${latestStr}</span>
-              <span class="text-[9px] th-text-m ml-1">${m.points}pts</span>
+              <span class="text-xs font-medium ${canViz ? 'th-text-s' : 'text-gray-400'}">${label}</span>
+              <span class="text-[10px] ${canViz ? 'th-text-m' : 'text-gray-500'}">${m.unit}${latestStr}</span>
+              <span class="text-[9px] ${canViz ? 'th-text-m' : 'text-gray-500'} ml-1">${m.points}pts</span>
             </div>
           </label>`;
         });
