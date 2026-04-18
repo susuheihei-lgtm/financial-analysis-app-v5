@@ -898,7 +898,7 @@ def parse_yfinance(ticker_symbol):
         quick_r_5y = ((ca4 - (inv4 or 0)) / cl4) * 100
 
     # ── ROE/ROA サマリー ──────────────────────────────────────────────────────
-    op_margin_vals = [to_pct(v) for v in op_margin_list[:5]]
+    op_margin_vals = [to_pct(v) for v in op_margin_list]
     roe_now = to_pct(roe_list[0]) if roe_list else None
     roe_3y = to_pct(roe_list[2]) if len(roe_list) > 2 else None
     roe_5y = to_pct(roe_list[i5]) if roe_list and n > 0 else None
@@ -1088,9 +1088,9 @@ def parse_yfinance(ticker_symbol):
         "ticker": ticker_symbol,
         "industry": industry,
 
-        "revenue": [g('revenue', i) for i in range(min(5, n))],
-        "fcf": [g('fcf', i) for i in range(min(5, len(fcf_list)))],
-        "eps": [g('eps', i) or g('eps_diluted', i) for i in range(min(5, n))],
+        "revenue": [g('revenue', i) for i in range(n)],
+        "fcf": [g('fcf', i) for i in range(len(fcf_list))],
+        "eps": [g('eps', i) or g('eps_diluted', i) for i in range(n)],
 
         "roe": [roe_now, roe_3y, roe_5y],
         "roe_growth_rate": roe_growth,
@@ -1103,9 +1103,9 @@ def parse_yfinance(ticker_symbol):
         "current_ratio": current_r,
         "current_ratio_5y": current_r_5y,
 
-        "operating_cf": [g('ocf', i) for i in range(min(5, len(ocf_list)))],
-        "investing_cf": [g('investing_cf', i) for i in range(min(5, len(g_list('investing_cf'))))],
-        "financing_cf": [g('financing_cf', i) for i in range(min(5, len(g_list('financing_cf'))))],
+        "operating_cf": [g('ocf', i) for i in range(len(ocf_list))],
+        "investing_cf": [g('investing_cf', i) for i in range(len(g_list('investing_cf')))],
+        "financing_cf": [g('financing_cf', i) for i in range(len(g_list('financing_cf')))],
         "op_margin": op_margin_vals,
         "ebitda_margin": ebitda_margin_val,
         "ebitda_margin_5y": ebitda_margin_5y,
