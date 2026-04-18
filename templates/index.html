@@ -90,11 +90,11 @@
     .scrollbar-hide::-webkit-scrollbar { display: none; }
     .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-    /* Grade colors — 4段階統一: ◎ accent / ○ green / ▲ amber / × red */
+    /* Grade colors — 全グレードをアクセントカラーに統一 */
     .grade-excellent { color: #D4852A; }
-    .grade-good      { color: #4ade80; }
-    .grade-warning   { color: #fbbf24; }
-    .grade-danger    { color: #f87171; }
+    .grade-good      { color: #D4852A; }
+    .grade-warning   { color: #D4852A; }
+    .grade-danger    { color: #D4852A; }
     .grade-na        { color: #6b7280; }
 
     /* Verdict cards */
@@ -1434,10 +1434,10 @@
     // ── 評価グレード統一レンダラー ─────────────────────────────────────────────
     // カラー体系: ◎ #D4852A / ○ #4ade80 / ▲ #fbbf24 / × #f87171 / — #6b7280
     const _GRADE_CFG = {
-      '◎': { cls: 'grade-excellent', bg: 'rgba(212,133,42,0.18)',  fg: '#D4852A', icon: '&#9679;',  label: '◎' },
-      '○': { cls: 'grade-good',      bg: 'rgba(74,222,128,0.18)', fg: '#4ade80', icon: '&#9679;',  label: '○' },
-      '▲': { cls: 'grade-warning',   bg: 'rgba(251,191,36,0.18)', fg: '#fbbf24', icon: '&#9650;',  label: '▲' },
-      '×': { cls: 'grade-danger',    bg: 'rgba(248,113,113,0.18)',fg: '#f87171', icon: '&#10005;', label: '✕' },
+      '◎': { cls: 'grade-excellent', bg: 'rgba(212,133,42,0.18)', fg: '#D4852A', icon: '&#9679;',  label: '◎' },
+      '○': { cls: 'grade-good',      bg: 'rgba(212,133,42,0.18)', fg: '#D4852A', icon: '&#9679;',  label: '○' },
+      '▲': { cls: 'grade-warning',   bg: 'rgba(212,133,42,0.18)', fg: '#D4852A', icon: '&#9650;',  label: '▲' },
+      '×': { cls: 'grade-danger',    bg: 'rgba(212,133,42,0.18)', fg: '#D4852A', icon: '&#10005;', label: '✕' },
     };
     function gradeColor(g) {
       return (_GRADE_CFG[g] || {}).fg || '#6b7280';
@@ -1659,8 +1659,8 @@
 
     function makeItemCard(label, grade, value, detail, chartKey, basis, missingReason) {
       const hasChart = chartKey && !!getChartData(chartKey);
-      const clickable = hasChart ? 'clickable-card' : '';
-      const onclick = hasChart ? `onclick="showItemChart('${chartKey}','${label}')"` : '';
+      const clickable = chartKey ? 'clickable-card' : '';
+      const onclick = chartKey ? `onclick="showItemChart('${chartKey}','${label}')"` : '';
       // Industry benchmark
       let benchHtml = '';
       if (chartKey && lastBenchmark) {
@@ -1687,7 +1687,9 @@
       if (metricInfoMap[_stableKey] || evaluationCriteria[_stableKey]) {
         basisHtml = `<div class="mt-1"><button class="text-[10px] px-2 py-0.5 rounded-full th-text-m hover:th-text-s" style="background:rgba(100,116,139,0.2);border:none;cursor:pointer" onclick="event.stopPropagation();showEvaluationCriteria('${label}')">?</button></div>`;
       }
-      return `<div class="card-hover sortable-item flex items-center justify-between p-4 th-bg-1 border ${clickable}" style="border-color:var(--border);border-radius:0" draggable="true" ${onclick}>
+      const arrowHtml = chartKey ? `<span class="text-[10px] th-text-d">▸</span>` : '';
+      const cardBg = !hasChart ? 'background:rgba(100,100,100,0.18)' : '';
+      return `<div class="card-hover sortable-item flex items-center justify-between p-4 th-bg-1 border ${clickable}" style="border-color:var(--border);border-radius:0;${cardBg}" draggable="true" ${onclick}>
         <div class="flex items-center gap-3">
           <span class="text-[10px] th-text-d cursor-grab drag-handle" style="margin-right:-4px">⠿</span>
           ${gradeIcon(grade)}
@@ -1695,7 +1697,7 @@
         </div>
         <div class="flex items-center gap-2">
           ${value !== undefined ? `<span class="text-sm font-bold th-text-s tabular-nums">${value}</span>` : ''}
-          ${hasChart ? '<span class="text-[10px] th-text-d">▸</span>' : ''}
+          ${arrowHtml}
         </div>
       </div>`;
     }
@@ -1797,6 +1799,9 @@
         { label: t('株主構造'), judge: (s['D-2_株主構造']||{})['判定'] },
         { label: t('ESG / 規制リスク'), judge: (s['D-3_ESG']||{})['判定'] },
       ]);
+
+      // lastTimeseries を先に設定（makeItemCard内の getChartData が参照するため）
+      if (data.timeseries) lastTimeseries = data.timeseries;
 
       // Merged Analysis tab
       const eqItem = s['A-1_自己資本比率']||{};
@@ -2284,17 +2289,17 @@
         }
 
         if (roeCanvas && ts.roe && ts.roe.length > 0) {
-          new Chart(roeCanvas, { ...miniOpts('#22c55e', metricFmt('roe')), data: {
-            labels: dates, datasets: [{ data: ts.roe.slice().reverse(), backgroundColor: '#22c55e33', borderColor: '#22c55e', borderWidth: 1.5, borderRadius: 0 }]
+          new Chart(roeCanvas, { ...miniOpts('#D4852A', metricFmt('roe')), data: {
+            labels: dates, datasets: [{ data: ts.roe.slice().reverse(), backgroundColor: '#D4852A33', borderColor: '#D4852A', borderWidth: 1.5, borderRadius: 0 }]
           }});
         } else if (roeChartContainer) {
           roeChartContainer.innerHTML = `<div class="flex items-center justify-center gap-2 p-3 border border-yellow-500/20 bg-yellow-500/5" style="border-radius:0"><span class="text-yellow-400">⚠</span><p class="text-[10px] th-text-m">${t('時系列データなし')}</p></div>`;
         }
         // DuPont decomposition charts
         const dupontCharts = [
-          { id: 'dupontNPMChart', key: 'net_margin', color: '#3b82f6' },
+          { id: 'dupontNPMChart', key: 'net_margin', color: '#D4852A' },
           { id: 'dupontATChart',  key: 'asset_turnover', color: '#D4852A' },
-          { id: 'dupontLEVChart', key: 'financial_leverage', color: '#f59e0b' },
+          { id: 'dupontLEVChart', key: 'financial_leverage', color: '#D4852A' },
         ];
         dupontCharts.forEach(({ id, key, color }) => {
           const canvas = document.getElementById(id);
@@ -2316,9 +2321,9 @@
             data: {
               labels: dates,
               datasets: [
-                mkDs(t('金利負担率'), 'interest_burden', '#ef4444'),
-                mkDs(t('営業外損益率'), 'nonop_burden', '#8b5cf6'),
-                mkDs(t('税引後利益率'), 'tax_burden', '#06b6d4'),
+                mkDs(t('金利負担率'), 'interest_burden', '#D4852A'),
+                mkDs(t('営業外損益率'), 'nonop_burden', '#D4852A'),
+                mkDs(t('税引後利益率'), 'tax_burden', '#D4852A'),
               ].filter(ds => ds.data.some(v => v !== null))
             },
             options: {
@@ -2430,13 +2435,13 @@
 
       multiLine('chartROE', [
         { label: 'ROE (%)', data: tsR.roe, borderColor: '#D4852A', backgroundColor: 'rgba(212,133,42,0.05)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
-        { label: 'ROA (%)', data: tsR.roa, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.05)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
+        { label: 'ROA (%)', data: tsR.roa, borderColor: '#D4852A', backgroundColor: 'rgba(212,133,42,0.05)', fill: true, borderDash: [4,3], borderWidth: 2, pointRadius: 2, tension: 0 },
       ], pctOpts);
 
       multiLine('chartBS', [
-        { label: t('Total Assets'), data: tsR.total_assets, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
-        { label: t('Equity'), data: tsR.total_equity, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.08)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
-        { label: t('Debt'), data: tsR.total_debt, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
+        { label: t('Total Assets'), data: tsR.total_assets, borderColor: '#D4852A', backgroundColor: 'rgba(212,133,42,0.08)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
+        { label: t('Equity'), data: tsR.total_equity, borderColor: '#D4852A', backgroundColor: 'rgba(212,133,42,0.08)', fill: true, borderDash: [4,3], borderWidth: 2, pointRadius: 2, tension: 0 },
+        { label: t('Debt'), data: tsR.total_debt, borderColor: '#D4852A', backgroundColor: 'rgba(212,133,42,0.08)', fill: true, borderDash: [2,4], borderWidth: 2, pointRadius: 2, tension: 0 },
       ]);
     }
 
@@ -2927,17 +2932,17 @@
     $('chartModalClose').addEventListener('click', () => closeModal('chartModal'));
     modal.addEventListener('click', e => { if (e.target === modal) closeModal('chartModal'); });
 
-    // Chart color palette
+    // Chart color palette — 全指標アクセントカラーに統一
     const chartColors = {
-      revenue:'#D4852A', fcf:'#8b5cf6', eps:'#f59e0b', ocf:'#3b82f6',
-      roe:'#D4852A', roa:'#3b82f6', op_margin:'#22c55e', ebitda:'#f59e0b',
-      equity_ratio:'#3b82f6', quick_ratio:'#f59e0b', current_ratio:'#22c55e',
-      debt_fcf:'#ef4444', roic:'#22c55e',
-      investing_cf:'#ef4444', financing_cf:'#8b5cf6',
-      pe_ratio:'#D4852A', pb_ratio:'#f59e0b', nd_ebitda:'#6366f1',
-      ebitda_margin:'#f59e0b', debt_ebitda:'#ef4444',
-      net_margin:'#3b82f6', asset_turnover:'#D4852A', financial_leverage:'#f59e0b',
-      dividend_yield:'#22c55e', payout_ratio:'#8b5cf6',
+      revenue:'#D4852A', fcf:'#D4852A', eps:'#D4852A', ocf:'#D4852A',
+      roe:'#D4852A', roa:'#D4852A', op_margin:'#D4852A', ebitda:'#D4852A',
+      equity_ratio:'#D4852A', quick_ratio:'#D4852A', current_ratio:'#D4852A',
+      debt_fcf:'#D4852A', roic:'#D4852A',
+      investing_cf:'#D4852A', financing_cf:'#D4852A',
+      pe_ratio:'#D4852A', pb_ratio:'#D4852A', nd_ebitda:'#D4852A',
+      ebitda_margin:'#D4852A', debt_ebitda:'#D4852A',
+      net_margin:'#D4852A', asset_turnover:'#D4852A', financial_leverage:'#D4852A',
+      dividend_yield:'#D4852A', payout_ratio:'#D4852A',
     };
 
     function getChartData(key) {
