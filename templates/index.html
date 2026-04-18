@@ -1658,8 +1658,9 @@
     }
 
     function makeItemCard(label, grade, value, detail, chartKey, basis, missingReason) {
-      const clickable = chartKey ? 'clickable-card' : '';
-      const onclick = chartKey ? `onclick="showItemChart('${chartKey}','${label}')"` : '';
+      const hasChart = chartKey && !!getChartData(chartKey);
+      const clickable = hasChart ? 'clickable-card' : '';
+      const onclick = hasChart ? `onclick="showItemChart('${chartKey}','${label}')"` : '';
       // Industry benchmark
       let benchHtml = '';
       if (chartKey && lastBenchmark) {
@@ -1694,7 +1695,7 @@
         </div>
         <div class="flex items-center gap-2">
           ${value !== undefined ? `<span class="text-sm font-bold th-text-s tabular-nums">${value}</span>` : ''}
-          ${chartKey ? '<span class="text-[10px] th-text-d">▸</span>' : ''}
+          ${hasChart ? '<span class="text-[10px] th-text-d">▸</span>' : ''}
         </div>
       </div>`;
     }
