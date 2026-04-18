@@ -2,8 +2,8 @@
 yfinanceからティッカーシンボルで財務データを取得し、
 parse_excel()と同一形式の (data, ts_data) を返すパーサー
 
-米国株: SEC EDGAR XBRL API（公式）→ yfinance（市場データ補完）
-日本株: yfinance（そのまま）
+米国株: SEC EDGAR XBRL API（公式）→ yfinance（市場データ補完）→ 10年分
+日本株: IR BANK CSV（自動DL、10年分）→ yfinance（市場データ補完）
 """
 import json
 import logging
@@ -16,6 +16,16 @@ try:
     import requests
 except ImportError:
     requests = None
+
+try:
+    from irbank_parser import parse_irbank as _parse_irbank
+except ImportError:
+    _parse_irbank = None
+
+try:
+    from edinet_parser import parse_edinet as _parse_edinet
+except ImportError:
+    _parse_edinet = None
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +225,7 @@ def _fetch_sec_facts(cik_padded: str) -> dict | None:
         return None
 
 def _get_sec_annual_series(
-    us_gaap: dict, concept_names: list[str], unit_key: str = 'USD', max_years: int = 6
+    us_gaap: dict, concept_names: list[str], unit_key: str = 'USD', max_years: int = 11
 ) -> list[tuple[int, float]]:
     """10-K の FY エントリを [(fiscal_year, value), ...] で新しい順に返す"""
     for concept in concept_names:
@@ -279,7 +289,7 @@ def parse_edgar_us(ticker_symbol: str) -> tuple[dict, dict, dict, list[str]] | N
     if not fy_set:
         return None
 
-    sorted_fy = sorted(fy_set, reverse=True)[:5]
+    sorted_fy = sorted(fy_set, reverse=True)[:10]
     dates = [str(y) for y in sorted_fy]
     n = len(dates)
 
@@ -639,8 +649,9 @@ def parse_yfinance(ticker_symbol):
 
     # ── 米国株判定（ティッカーから早期判定）──────────────────────────────────
     _is_likely_us = not (ticker_symbol.endswith('.T') or ticker_symbol.endswith('.J'))
+    _is_japan = ticker_symbol.endswith('.T') or ticker_symbol.endswith('.J')
 
-    # ── 米国株: SEC EDGAR API で公式財務データ取得を試行 ──────────────────────
+    # ── 米国株: SEC EDGAR API で公式財務データ取得を試行（10年分）────────────
     _sec_data = None
     if _is_likely_us:
         try:
@@ -649,6 +660,30 @@ def parse_yfinance(ticker_symbol):
                 logger.info("SEC EDGAR データを使用: %s", ticker_symbol)
         except Exception as e:
             logger.warning("SEC EDGAR フォールバック (yfinance): %s", e)
+
+    # ── 日本株: IR BANK で財務データ取得を試行 ─────────────────
+    _jp_code = ticker_symbol.replace('.T', '').replace('.J', '') if _is_japan else None
+    _irbank_data = None
+    _edinet_data = None
+
+    if _is_japan and _jp_code:
+        # FY終了月を yfinance info から取得（デフォルト3月）
+        _fy_month_name = (info.get('fiscalYearEnd') or 'March').strip()
+        _MONTH_MAP = {
+            'January': 1, 'February': 2, 'March': 3, 'April': 4,
+            'May': 5, 'June': 6, 'July': 7, 'August': 8,
+            'September': 9, 'October': 10, 'November': 11, 'December': 12,
+        }
+        _fy_end_month = _MONTH_MAP.get(_fy_month_name, 3)
+
+        # ② IR BANK（EDINET が取れなかった場合）
+        if _edinet_data is None and _parse_irbank is not None:
+            try:
+                _irbank_data = _parse_irbank(_jp_code, max_years=10)
+                if _irbank_data is not None:
+                    logger.info("IR BANK データを使用: %s (code=%s)", ticker_symbol, _jp_code)
+            except Exception as e:
+                logger.warning("IR BANK フォールバック (yfinance): %s", e)
 
     # ── ETF / ファンド / 暗号通貨など非株式の弾き出し ─────────────────────────
     _quote_type = info.get('quoteType', '')
@@ -669,7 +704,7 @@ def parse_yfinance(ticker_symbol):
 
     # ── データ存在チェック ───────────────────────────────────────────────────
     _has_yf = not ((inc_df is None or inc_df.empty) and (bs_df is None or bs_df.empty))
-    if not _has_yf and _sec_data is None:
+    if not _has_yf and _sec_data is None and _irbank_data is None and _edinet_data is None:
         # 上場廃止・シンボル誤り・データなし
         _exchange = info.get('exchange', '')
         if not _exchange and not info.get('regularMarketPrice'):
@@ -684,7 +719,7 @@ def parse_yfinance(ticker_symbol):
 
     # ── 追加データ取得（yfinance: 株価・ESG・アナリスト等）──────────────────
     try:
-        hist_df = ticker.history(period='6y', interval='1mo')
+        hist_df = ticker.history(period='11y', interval='1mo')
     except Exception:
         hist_df = None
 
@@ -709,39 +744,50 @@ def parse_yfinance(ticker_symbol):
         dividends_series = None
 
     # ── 財務データ抽出 ────────────────────────────────────────────────────────
-    # yfinance データを先に抽出（SEC が None のフィールドへのフォールバック用）
+    # yfinance データを先に抽出（SEC / IR BANK が None のフィールドへのフォールバック用）
     inc_data_yf, inc_dates_yf = _extract_series(inc_df, _INCOME_MAP)
     cf_data_yf,  cf_dates_yf  = _extract_series(cf_df,  _CASHFLOW_MAP)
     bs_data_yf,  bs_dates_yf  = _extract_series(bs_df,  _BALANCE_MAP)
 
-    if _sec_data is not None:
-        # SEC EDGAR の公式データを使用
-        _s_inc, _s_bs, _s_cf, dates = _sec_data
-        all_data = {}
-        all_data.update(_s_bs)
-        all_data.update(_s_cf)
-        all_data.update(_s_inc)
-
-        # SEC が None のフィールド／要素を yfinance データで補完
-        # - 全Noneのフィールド: yfinanceで丸ごと置換（MS/BAC等の金融セクター対策）
-        # - 一部Noneのリスト: 要素単位で補完（NVDA/GOOGLの最新年欠損対策）
+    def _merge_with_yf_fallback(primary_inc, primary_bs, primary_cf, primary_dates):
+        """プライマリデータ（SEC/IR BANK）と yfinance をマージする共通ロジック"""
+        _merged = {}
+        _merged.update(primary_bs)
+        _merged.update(primary_cf)
+        _merged.update(primary_inc)
         yf_fallback = {**bs_data_yf, **cf_data_yf, **inc_data_yf}
         for k, v in yf_fallback.items():
             if not v or all(x is None for x in v):
-                continue  # yfinance 側もデータなし → スキップ
-            existing = all_data.get(k)
+                continue
+            existing = _merged.get(k)
             if not existing:
-                all_data[k] = v
+                _merged[k] = v
             elif isinstance(existing, list) and isinstance(v, list):
-                # 要素単位でNoneをyfinanceで補完
-                merged = []
+                merged_list = []
                 for i in range(max(len(existing), len(v))):
                     ex_val = existing[i] if i < len(existing) else None
                     yf_val = v[i] if i < len(v) else None
-                    merged.append(ex_val if ex_val is not None else yf_val)
-                all_data[k] = merged
+                    merged_list.append(ex_val if ex_val is not None else yf_val)
+                _merged[k] = merged_list
+        return _merged, primary_dates
+
+    if _sec_data is not None:
+        # 米国株: SEC EDGAR の公式データを使用（10年分）
+        _s_inc, _s_bs, _s_cf, dates = _sec_data
+        all_data, dates = _merge_with_yf_fallback(_s_inc, _s_bs, _s_cf, dates)
+
+    elif _edinet_data is not None:
+        # 日本株: EDINET XBRL の公式データを使用（10年分）
+        _ed_inc, _ed_bs, _ed_cf, dates = _edinet_data
+        all_data, dates = _merge_with_yf_fallback(_ed_inc, _ed_bs, _ed_cf, dates)
+
+    elif _irbank_data is not None:
+        # 日本株: IR BANK CSV データを使用（4〜5年分）
+        _ib_inc, _ib_bs, _ib_cf, dates = _irbank_data
+        all_data, dates = _merge_with_yf_fallback(_ib_inc, _ib_bs, _ib_cf, dates)
+
     else:
-        # yfinance フォールバック
+        # yfinance フォールバック（非上場・海外株など）
         dates = inc_dates_yf or cf_dates_yf or bs_dates_yf
         all_data = {}
         all_data.update(bs_data_yf)

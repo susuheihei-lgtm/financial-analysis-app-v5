@@ -22,11 +22,13 @@ v5/
   _analyzer_screening.py    # スクリーニング判定
   _analyzer_thresholds.py   # 投資家プロファイル・しきい値定義
   _analyzer_trees.py        # ROA/ROEツリー分解
-  yfinance_parser.py        # yfinance + SEC EDGAR データ取得
+  yfinance_parser.py        # yfinance + SEC EDGAR + EDINET + IR BANK データ取得
+  edinet_parser.py          # EDINET XBRL パーサー（日本株10年分）
+  irbank_parser.py          # IR BANK CSV パーサー（日本株4〜5年分、EDINET非設定時）
   excel_parser.py           # Excelファイルパーサー（.xls/.xlsx、日本語対応）
-  templates/index.html      # シングルページアプリ（HTML/CSS/JS 3153行）
+  templates/index.html      # シングルページアプリ（HTML/CSS/JS）
   static/css/, static/js/   # 静的アセット
-  data/                     # サンプルExcelデータ
+  data/                     # サンプルExcelデータ / EDINETキャッシュ / IR BANKキャッシュ
   .env                      # ローカル環境変数（gitignore済み）
 ```
 
@@ -44,7 +46,9 @@ v5/
 ```bash
 # .env（必須 — ないとSECRET_KEY RuntimeErrorで起動不可）
 FLASK_DEBUG=true
-SECRET_KEY=<32バイトhex>  # python -c "import secrets; print(secrets.token_hex(32))"
+SECRET_KEY=<32バイトhex>    # python -c "import secrets; print(secrets.token_hex(32))"
+EDINET_API_KEY=<APIキー>    # 任意。設定すると日本株が10年分取得可能
+                             # 無料取得: https://disclosure.edinet-fsa.go.jp/
 ```
 
 - `python-dotenv` が venv にインストールされている必要あり（`pip install python-dotenv`）
@@ -52,8 +56,10 @@ SECRET_KEY=<32バイトhex>  # python -c "import secrets; print(secrets.token_he
 
 ## Gotchas
 
-- **yfinance は年次データ4年まで**の仕様制限。5年目は取得不可（米国株はSEC EDGARで5年取得可）
-- **SEC EDGARは米国株のみ**。日本株（`.T`）や南アフリカ株（AU等）はyfinanceのみ
+- **yfinance は年次データ4年まで**の仕様制限。財務諸表は EDINET/SEC が代替、市場データは yfinance 必須
+- **米国株**: SEC EDGAR（10年分）→ yfinance（市場データ補完）
+- **日本株**: EDINET（10年分、APIキー要）→ IR BANK（4〜5年分、フォールバック）→ yfinance（市場データ）
+- **SEC EDGARは米国株のみ**。日本株（`.T`）や南アフリカ株（AU等）はEDINET/IR BANKまたはyfinance
 - **AU（AngloGold）はSEC EDGARにus-gaapデータなし** — yfinanceフォールバックで処理される
 - **`major_holders` フォーマット変更（yfinance新版）**: string index + 'Value'列。旧コードの`iloc[str, 1]`はクラッシュする — `_assess_ownership()`で対応済み
 - **起動前にObsidianを開く必要あり** — MCP Tools（REST API Plugin）がObsidian起動を要求
