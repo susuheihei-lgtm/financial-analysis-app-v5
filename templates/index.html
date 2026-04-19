@@ -255,10 +255,12 @@
       inset: 0;
       z-index: 0;
       background: url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1400&q=80') center/cover no-repeat;
-      opacity: 0.08;
+      opacity: 1;
     }
     [data-theme="light"] .hero-bg::before { opacity: 0.06; }
     .hero-bg > * { position: relative; z-index: 1; }
+    .hero-ui-panel { background: rgba(0,0,0,0.55); padding: 2.5rem; }
+    [data-theme="light"] .hero-ui-panel { background: transparent; padding: 0; }
 
     /* Dashboard hero image strip */
     .dashboard-hero-img {
@@ -396,7 +398,7 @@
   <main id="mainContent">
   <!-- Upload Section — V0 editorial style with hero background -->
   <section id="uploadSection" class="hero-bg pt-[72px] min-h-screen flex items-center justify-center px-4 sm:px-8">
-    <div class="max-w-lg w-full fade-up">
+    <div class="max-w-lg w-full fade-up hero-ui-panel">
       <!-- V0 Editorial eyebrow + heading -->
       <div class="text-center mb-14">
         <span class="v0-section-label mb-4 inline-block">00 / Financial Intelligence</span>
