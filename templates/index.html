@@ -1501,7 +1501,7 @@
         criteria: { ja: '◎: 5年CAGR 10%以上 かつ 5年連続増加 / ○: 5%以上 / ▲: 0%以上 / ×: 0%未満', en: '◎: 5Y CAGR ≥10% with consecutive growth / ○: ≥5% / ▲: ≥0% / ×: <0%' }
       },
       'EPS推移': {
-        formula: { ja: 'EPS (円) = 当期純利益 ÷ 発行済株式数', en: 'EPS = Net Income ÷ Shares Outstanding' },
+        formula: { ja: 'EPS = 当期純利益 ÷ 発行済株式数', en: 'EPS = Net Income ÷ Shares Outstanding' },
         criteria: { ja: '◎: 5年成長率 10%以上 かつ 5年連続増加 / ○: 5%以上 / ▲: 0%以上 / ×: 0%未満', en: '◎: 5Y growth ≥10% with consecutive increase / ○: ≥5% / ▲: ≥0% / ×: <0%' }
       },
       'EBITDA Margin': {
@@ -1834,7 +1834,7 @@
       const qRev = q['売上高推移']||{}, qFcf = q['FCF推移']||{}, qEps = q['EPS推移']||{};
       $('growthItems').innerHTML = [
         makeItemCard(t('売上高推移'), qRev['評価'], qRev['最新値']!==undefined?(qRev['data_warning']?'⚠️ ':'')+smartFormat(qRev['最新値']):'', fmt5Y(qRev['5年変化率'],1,'%'), 'revenue', b1['基準'], qRev['欠損理由']),
-        makeItemCard(t('EPS推移'), qEps['評価'], qEps['最新値']!==undefined?fmtNum(qEps['最新値'],1)+' '+t('円'):'', fmt5Y(qEps['5年変化率'],1,'%'), 'eps', b4['基準'], qEps['欠損理由']),
+        makeItemCard(t('EPS推移'), qEps['評価'], qEps['最新値']!==undefined?currentCurrencySymbol+fmtNum(qEps['最新値'],1):'', fmt5Y(qEps['5年変化率'],1,'%'), 'eps', b4['基準'], qEps['欠損理由']),
         makeItemCard(t('EBITDA Margin'), b2['判定'], fmtNum(b2['実績値'],1,'%'), fmt5Y((q['EBITDAマージン']||{})['5年変化pt'],1,'pt'), 'ebitda', b2['基準']),
         makeItemCard(t('営業利益率'), b3['判定'], typeof b3['状況']==='number'?(b3['data_warning']?'⚠️ ':'')+fmtNum(b3['状況'],1,'%'):(b3['状況']||'—'), fmt5Y((q['営業利益率Q']||{})['5年変化pt'],1,'pt'), 'op_margin', b3['基準']),
       ].join('');
