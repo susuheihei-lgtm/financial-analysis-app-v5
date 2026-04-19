@@ -1069,6 +1069,11 @@ def parse_yfinance(ticker_symbol):
     analyst_consensus, analyst_breakdown = _get_analyst_consensus(recommendations_df)
     analyst_target = _safe(info.get('targetMeanPrice'))
     current_price = _safe(info.get('currentPrice') or info.get('regularMarketPrice'))
+    # priceToBook / pbr_ts が両方 None の場合、bookValue (per share) で補完
+    if pbr_now is None and current_price and current_price > 0:
+        bvps = _safe(info.get('bookValue'))
+        if bvps and bvps > 0:
+            pbr_now = _safe(current_price / bvps)
     analyst_upside = None
     if analyst_target and current_price and current_price > 0:
         analyst_upside = ((analyst_target - current_price) / current_price) * 100
