@@ -29,7 +29,8 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
   <style>
 
     html { color-scheme: dark; }
@@ -1362,41 +1363,76 @@
       tickerInput.value = ''; tickerError.classList.add('hidden');
     });
 
-    $('btnExport').addEventListener('click', () => {
-      const el = $('dashboard');
-      const inputCompanyVal = ($('inputCompany') || {}).value;
-      const displayName = $('companyName') ? $('companyName').textContent : '';
-      const companyName = inputCompanyVal || displayName || 'analysis';
-      const opt = {
-        margin: [8, 8, 8, 8],
-        filename: companyName.replace(/\s+/g, '_') + '_analysis.pdf',
-        image: { type: 'jpeg', quality: 0.92 },
-        html2canvas: {
-          scale: 1.5,
-          useCORS: true,
-          scrollY: 0,
-          windowWidth: 1280,
-          windowHeight: window.innerHeight,
-          logging: false,
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['css', 'legacy'], avoid: ['.th-bg-1', '.metric-card', 'canvas'] },
-      };
+    $('btnExport').addEventListener('click', async () => {
       const exportBtn = $('btnExport');
       const origText = exportBtn.querySelector('span') ? exportBtn.querySelector('span').textContent : 'Export';
       if (exportBtn.querySelector('span')) exportBtn.querySelector('span').textContent = t('Exporting…');
       exportBtn.disabled = true;
-      html2pdf().set(opt).from(el).save()
-        .then(() => {
-          if (exportBtn.querySelector('span')) exportBtn.querySelector('span').textContent = origText;
-          exportBtn.disabled = false;
-        })
-        .catch((err) => {
-          console.error('PDF export error:', err);
-          if (exportBtn.querySelector('span')) exportBtn.querySelector('span').textContent = origText;
-          exportBtn.disabled = false;
-          alert(t('PDF export failed'));
+
+      const inputCompanyVal = ($('inputCompany') || {}).value;
+      const displayName = $('companyName') ? $('companyName').textContent : '';
+      const companyName = inputCompanyVal || displayName || 'analysis';
+      const filename = companyName.replace(/\s+/g, '_') + '_analysis.pdf';
+
+      const h2cOpt = { scale: 1.5, useCORS: true, scrollY: 0, windowWidth: 1280, logging: false };
+      const pdfOpt = { unit: 'mm', format: 'a4', orientation: 'portrait' };
+
+      // エクスポート対象タブ（データがある場合のみ）
+      const exportTabs = ['tab-analysis', 'tab-roe', 'tab-charts'];
+      if (selectedMetrics.size > 0) exportTabs.push('tab-custom');
+      if (compRawData && compRawData.length) exportTabs.push('tab-competitor');
+
+      // 現在の表示状態を記憶
+      const tabContents = document.querySelectorAll('.tab-content');
+      const hiddenState = new Map();
+      tabContents.forEach(el => hiddenState.set(el.id, el.classList.contains('hidden')));
+      const tabNav = $('tabNav');
+
+      try {
+        // タブナビを隠し、全タブを表示
+        tabNav.style.display = 'none';
+        tabContents.forEach(el => el.classList.remove('hidden'));
+        await new Promise(r => setTimeout(r, 200)); // DOM安定待ち
+
+        const pdf = new window.jspdf.jsPDF(pdfOpt);
+        const pageW = pdf.internal.pageSize.getWidth();
+        const pageH = pdf.internal.pageSize.getHeight();
+
+        for (let i = 0; i < exportTabs.length; i++) {
+          const tabEl = $(exportTabs[i]);
+          if (!tabEl) continue;
+
+          const canvas = await window.html2canvas(tabEl, { ...h2cOpt, windowHeight: tabEl.scrollHeight });
+          const imgData = canvas.toDataURL('image/jpeg', 0.92);
+          const imgW = pageW - 16;
+          const imgH = (canvas.height * imgW) / canvas.width;
+
+          if (i > 0) pdf.addPage();
+
+          // 長いコンテンツを複数ページに分割
+          let yOffset = 0;
+          while (yOffset < imgH) {
+            if (yOffset > 0) pdf.addPage();
+            const sliceH = Math.min(pageH - 16, imgH - yOffset);
+            pdf.addImage(imgData, 'JPEG', 8, 8, imgW, imgH, '', 'FAST', 0, -yOffset);
+            yOffset += pageH - 16;
+          }
+        }
+
+        pdf.save(filename);
+      } catch (err) {
+        console.error('PDF export error:', err);
+        alert(t('PDF export failed'));
+      } finally {
+        // 元の表示状態に戻す
+        tabNav.style.display = '';
+        tabContents.forEach(el => {
+          if (hiddenState.get(el.id)) el.classList.add('hidden');
+          else el.classList.remove('hidden');
         });
+        if (exportBtn.querySelector('span')) exportBtn.querySelector('span').textContent = origText;
+        exportBtn.disabled = false;
+      }
     });
 
     function setLoading(on) {
@@ -3290,22 +3326,18 @@
       $('customEmpty').classList.add('hidden');
       $('customContent').classList.remove('hidden');
 
-      // Clear all cat containers
       catOrder.forEach(cat => {
         const el = $('customCat-' + cat);
         el.classList.add('hidden');
         el.querySelector('.custom-cat-items').innerHTML = '';
       });
 
-      // Destroy old charts
       Object.values(customCharts).forEach(c => c.destroy());
       Object.keys(customCharts).forEach(k => delete customCharts[k]);
 
       const metaMap = {};
       availableMetrics.forEach(m => metaMap[m.key] = m);
-      const dates = (customTimeseries.dates || []).slice().reverse();
 
-      // Group selected metrics by category
       const grouped = {};
       catOrder.forEach(c => grouped[c] = []);
       selectedMetrics.forEach(key => {
@@ -3323,25 +3355,28 @@
         const itemsDiv = container.querySelector('.custom-cat-items');
 
         items.forEach(({ key, meta }) => {
-          const tsData = customTimeseries[key];
-          if (!tsData || !tsData.length) return;
+          // getChartData でスケール・方向補正済みデータを取得
+          const cd = getChartData(key);
+          if (!cd || !cd.data.length) return;
 
           const label = currentLang === 'ja' ? meta.ja : meta.en;
-          const latest = tsData[0];
-          const latestStr = latest !== null && latest !== undefined ? fmtNum(latest, 1) + ' ' + meta.unit : '—';
+          const vals = cd.data.filter(v => v != null);
+          const latest = vals.length ? vals[vals.length - 1] : null;
+          const isLarge = meta.unit === '' && latest !== null && Math.abs(latest) > 9999;
+          const latestFormatted = latest !== null
+            ? (isLarge ? smartFormat(latest) : fmtNum(latest, 1)) + (meta.unit ? ' ' + meta.unit : '')
+            : '—';
 
-          // Card with embedded mini chart
           const canvasId = 'customChart_' + key;
           const cardHtml = `<div class="p-4 th-bg-1 border mb-3" style="border-color:var(--border);border-radius:0">
             <div class="flex items-center justify-between mb-3">
               <p class="text-sm font-medium th-text-s">${label}</p>
-              <span class="text-sm font-bold th-text-s tabular-nums">${latestStr}</span>
+              <span class="text-sm font-bold th-text-s tabular-nums">${latestFormatted}</span>
             </div>
             <canvas id="${canvasId}" style="max-height:160px"></canvas>
           </div>`;
           itemsDiv.innerHTML += cardHtml;
 
-          // Render chart after DOM update
           requestAnimationFrame(() => {
             const canvas = document.getElementById(canvasId);
             if (!canvas) return;
@@ -3349,18 +3384,20 @@
             const chartText = cs.getPropertyValue('--chart-text').trim();
             const chartGridY = cs.getPropertyValue('--chart-grid-y').trim();
             const color = chartColors[key] || '#D4852A';
+            const yTickCb = isLarge ? v => smartFormat(v) : (meta.unit === '%' ? v => v.toFixed(1) + '%' : v => fmtNum(v, 1) + (meta.unit ? ' ' + meta.unit : ''));
+            const tooltipCb = ctx => label + ': ' + (isLarge ? smartFormat(ctx.parsed.y) : fmtNum(ctx.parsed.y, 1) + (meta.unit ? ' ' + meta.unit : ''));
             customCharts[key] = new Chart(canvas, {
               type: 'bar',
               data: {
-                labels: dates,
-                datasets: [{ label, data: tsData.slice().reverse(), backgroundColor: color + '44', borderColor: color, borderWidth: 1.5, borderRadius: 4 }],
+                labels: cd.labels,
+                datasets: [{ label, data: cd.data, backgroundColor: color + '44', borderColor: color, borderWidth: 1.5, borderRadius: 0 }],
               },
               options: {
                 responsive: true, maintainAspectRatio: true,
-                plugins: { legend: { display: false } },
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: tooltipCb } } },
                 scales: {
                   x: { grid: { display: false }, ticks: { font: { size: 10 }, color: chartText } },
-                  y: { grid: { color: chartGridY }, ticks: { font: { size: 9 }, color: chartText, callback: v => smartFormat(v) } },
+                  y: { grid: { color: chartGridY }, ticks: { font: { size: 9 }, color: chartText, callback: yTickCb } },
                 },
               },
             });
