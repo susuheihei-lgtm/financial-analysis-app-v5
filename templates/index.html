@@ -1368,12 +1368,19 @@
       const displayName = $('companyName') ? $('companyName').textContent : '';
       const companyName = inputCompanyVal || displayName || 'analysis';
       const opt = {
-        margin: [10, 5, 10, 5],
+        margin: [8, 8, 8, 8],
         filename: companyName.replace(/\s+/g, '_') + '_analysis.pdf',
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+        image: { type: 'jpeg', quality: 0.92 },
+        html2canvas: {
+          scale: 1.5,
+          useCORS: true,
+          scrollY: 0,
+          windowWidth: 1280,
+          windowHeight: window.innerHeight,
+          logging: false,
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['.th-bg-1', '.metric-card', 'canvas'] },
       };
       const exportBtn = $('btnExport');
       const origText = exportBtn.querySelector('span') ? exportBtn.querySelector('span').textContent : 'Export';
@@ -1942,6 +1949,7 @@
 
       if (re) renderROETree(re, r);
       if (data.timeseries) { lastTimeseries = data.timeseries; renderCharts(data.timeseries); }
+      buildMetricsFromData();
       initSortable();
     }
 
@@ -3200,6 +3208,40 @@
       body.innerHTML = html;
     }
 
+    function buildMetricsFromData() {
+      const allMetricDefs = [
+        { key: 'revenue',        cat: 'growth',        en: 'Revenue',              ja: '売上高' },
+        { key: 'net_income',     cat: 'growth',        en: 'Net Income',           ja: '純利益' },
+        { key: 'fcf',            cat: 'growth',        en: 'Free Cash Flow',       ja: 'FCF' },
+        { key: 'eps',            cat: 'growth',        en: 'EPS',                  ja: 'EPS' },
+        { key: 'ebitda',         cat: 'profitability', en: 'EBITDA',               ja: 'EBITDA' },
+        { key: 'roe',            cat: 'performance',   en: 'ROE (%)',              ja: 'ROE (%)' },
+        { key: 'roa',            cat: 'performance',   en: 'ROA (%)',              ja: 'ROA (%)' },
+        { key: 'op_margin',      cat: 'profitability', en: 'Operating Margin (%)', ja: '営業利益率 (%)' },
+        { key: 'ebitda_margin',  cat: 'profitability', en: 'EBITDA Margin (%)',    ja: 'EBITDAマージン (%)' },
+        { key: 'equity_ratio',   cat: 'health',        en: 'Equity Ratio (%)',     ja: '自己資本比率 (%)' },
+        { key: 'current_ratio',  cat: 'health',        en: 'Current Ratio (%)',    ja: '流動比率 (%)' },
+        { key: 'quick_ratio',    cat: 'health',        en: 'Quick Ratio (%)',      ja: '当座比率 (%)' },
+        { key: 'total_assets',   cat: 'health',        en: 'Total Assets',         ja: '総資産' },
+        { key: 'total_equity',   cat: 'health',        en: 'Total Equity',         ja: '純資産' },
+        { key: 'total_debt',     cat: 'health',        en: 'Total Debt',           ja: '有利子負債' },
+        { key: 'pe_ratio',       cat: 'valuation',     en: 'P/E Ratio (x)',        ja: 'PER (x)' },
+        { key: 'pb_ratio',       cat: 'valuation',     en: 'P/B Ratio (x)',        ja: 'PBR (x)' },
+        { key: 'roic',           cat: 'performance',   en: 'ROIC (%)',             ja: 'ROIC (%)' },
+        { key: 'dividend_yield', cat: 'other',         en: 'Dividend Yield (%)',   ja: '配当利回り (%)' },
+        { key: 'payout_ratio',   cat: 'other',         en: 'Payout Ratio (%)',     ja: '配当性向 (%)' },
+      ];
+      availableMetrics = allMetricDefs.filter(m => {
+        const cd = getChartData(m.key);
+        if (!cd) return false;
+        const vals = cd.data.filter(v => v != null);
+        m.points = vals.length;
+        m.unit = ['roe','roa','op_margin','ebitda_margin','equity_ratio','current_ratio','quick_ratio','roic','dividend_yield','payout_ratio'].includes(m.key) ? '%' : ['pe_ratio','pb_ratio'].includes(m.key) ? 'x' : '';
+        m.latest = vals.length ? vals[vals.length - 1] : null;
+        return vals.length > 0;
+      });
+    }
+
     $('btnOpenChecklist').addEventListener('click', openChecklist);
     $('btnEditChecklist').addEventListener('click', openChecklist);
     $('checklistClose').addEventListener('click', () => closeModal('checklistModal'));
@@ -3221,7 +3263,15 @@
         return;
       }
 
-      // Fetch custom timeseries
+      // ティッカー/yfinanceデータの場合は lastTimeseries を直接使う
+      const source = lastData && lastData.timeseries && lastData.timeseries._source;
+      if (source === 'yfinance' || source === 'irbank' || source === 'edinet') {
+        customTimeseries = lastTimeseries;
+        renderCustomAnalysis();
+        return;
+      }
+
+      // Excelの場合はAPIを呼ぶ
       try {
         const res = await fetch('/api/custom_analysis', {
           method: 'POST',
