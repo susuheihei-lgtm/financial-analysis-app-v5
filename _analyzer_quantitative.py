@@ -186,10 +186,22 @@ def analyze_quantitative(d, benchmark=None):
         roa_now, roa_idx = get_latest_value(roa)
         roa_data_warning = (roa_idx or 0) > 0
         roa_3y, roa_5y_val = roa[1], roa[2]
+        ev_roa = "×"
+        if roa_now is not None:
+            if roa_now >= 15:
+                ev_roa = "◎"
+            elif roa_now >= 8:
+                ev_roa = "○"
+            elif roa_now >= 0:
+                ev_roa = "▲"
+            else:
+                ev_roa = "×"
         results["ROA"] = {
             "現在値": roa_now,
             "3年変化pt": roa_now - roa_3y if (roa_now is not None and roa_3y is not None) else None,
             "5年変化pt": roa_now - roa_5y_val if (roa_now is not None and roa_5y_val is not None) else None,
+            "評価": ev_roa,
+            "評価軸": evaluation_criteria.get("ROA", {}).get("評価軸", ""),
             "data_warning": roa_data_warning,
         }
     else:

@@ -999,7 +999,22 @@ def parse_yfinance(ticker_symbol):
     div_yield = info.get('dividendYield')
     ev_val = info.get('enterpriseValue')
     company_name = info.get('shortName') or info.get('longName') or ticker_symbol
-    industry = info.get('industry', '製造・サービス')
+    industry_raw = info.get('industry', 'Industrials')
+    # yfinanceが日本語でセクター情報を返す場合、英語にマッピング
+    ja_to_en_sector = {
+        '製造・サービス': 'Industrials',
+        '金融': 'Financials',
+        'テクノロジー': 'Technology',
+        '電気通信': 'Communication Services',
+        'エネルギー': 'Energy',
+        'ユーティリティ': 'Utilities',
+        '素材': 'Materials',
+        '不動産': 'Real Estate',
+        'ヘルスケア': 'Healthcare',
+        '生活必需品': 'Consumer Staples',
+        '裁量的消費': 'Consumer Discretionary',
+    }
+    industry = ja_to_en_sector.get(industry_raw, industry_raw if industry_raw else 'Industrials')
     dividend_yield_pct = div_yield * 100 if div_yield else None
 
     # 配当性向: info.get('payoutRatio') が小数 (0.30 = 30%)
