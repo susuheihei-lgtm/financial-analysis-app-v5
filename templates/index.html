@@ -1404,18 +1404,19 @@
 
           const canvas = await window.html2canvas(tabEl, { ...h2cOpt, windowHeight: tabEl.scrollHeight });
           const imgData = canvas.toDataURL('image/jpeg', 0.92);
-          const imgW = pageW - 16;
+          const margin = 8;
+          const imgW = pageW - margin * 2;
           const imgH = (canvas.height * imgW) / canvas.width;
+          const usablePageH = pageH - margin * 2;
 
-          if (i > 0) pdf.addPage();
-
-          // 長いコンテンツを複数ページに分割
+          // 各ページにy座標オフセットで正しく分割配置
           let yOffset = 0;
+          let firstPage = true;
           while (yOffset < imgH) {
-            if (yOffset > 0) pdf.addPage();
-            const sliceH = Math.min(pageH - 16, imgH - yOffset);
-            pdf.addImage(imgData, 'JPEG', 8, 8, imgW, imgH, '', 'FAST', 0, -yOffset);
-            yOffset += pageH - 16;
+            if (!firstPage || i > 0) pdf.addPage();
+            firstPage = false;
+            pdf.addImage(imgData, 'JPEG', margin, margin - yOffset, imgW, imgH, undefined, 'FAST');
+            yOffset += usablePageH;
           }
         }
 
@@ -3226,7 +3227,9 @@
         items.forEach(m => {
           const checked = selectedMetrics.has(m.key) ? 'checked' : '';
           const label = currentLang === 'ja' ? m.ja : m.en;
-          const latestStr = m.latest !== null && m.latest !== undefined ? ` (${fmtNum(m.latest,1)})` : '';
+          const isLargeVal = m.unit === '' && m.latest !== null && Math.abs(m.latest) > 9999;
+          const latestStr = m.latest !== null && m.latest !== undefined
+            ? ` (${isLargeVal ? smartFormat(m.latest) : fmtNum(m.latest, 1)}${m.unit ? ' ' + m.unit : ''})` : '';
           const canViz = !!getChartData(m.key);
           const vizStyle = canViz ? '' : 'opacity:0.4;';
           const vizTitle = canViz ? '' : ` title="${currentLang === 'ja' ? '時系列チャート非対応' : 'No chart available'}"`;
