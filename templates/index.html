@@ -2204,7 +2204,6 @@
               ${node(t('営業外損益率'), (re['営業外損益率']||{})['現在値'], (re['営業外損益率']||{})['5年変化pt'], (re['営業外損益率']||{})['評価'], '%')}
               ${node(t('税引後利益率'), (re['税引後利益率']||{})['現在値'], (re['税引後利益率']||{})['5年変化pt'], (re['税引後利益率']||{})['評価'], '%')}
               ${re['純利益率検算'] ? `<p class="text-[9px] th-text-m mt-1">${t('検算')}: ${fmtNum((re['純利益率検算']||{})['計算値'],2)}% vs ${t('実績')} ${fmtNum((re['純利益率検算']||{})['実績値'],2)}%</p>` : ''}
-              <canvas id="dupontGapChart" class="mt-3" style="max-height:100px"></canvas>
             </div>
           </div>
           <div class="p-5 th-bg-2 border" style="border-color:var(--border-s);border-radius:0">
@@ -2274,8 +2273,14 @@
         }
 
         if (perCanvas && ts.pe_ratio && ts.pe_ratio.length > 0) {
+          const perArr = ts.pe_ratio.slice().reverse();
+          // 最新年が欠損していれば trailing PER（screening C-1_PER 実績値）で補完
+          const trailingPE = ((lastData||{}).screening||{})['C-1_PER']?.['実績値'];
+          if (perArr.length > 0 && perArr[perArr.length - 1] == null && trailingPE != null) {
+            perArr[perArr.length - 1] = trailingPE;
+          }
           new Chart(perCanvas, { ...miniOpts('#D4852A', metricFmt('pe_ratio')), data: {
-            labels: dates, datasets: [{ data: ts.pe_ratio.slice().reverse(), backgroundColor: '#D4852A33', borderColor: '#D4852A', borderWidth: 1.5, borderRadius: 0 }]
+            labels: dates, datasets: [{ data: perArr, backgroundColor: '#D4852A33', borderColor: '#D4852A', borderWidth: 1.5, borderRadius: 0 }]
           }});
         } else if (perChartContainer) {
           perChartContainer.innerHTML = `<div class="flex items-center justify-center gap-2 p-3 border border-yellow-500/20 bg-yellow-500/5" style="border-radius:0"><span class="text-yellow-400">⚠</span><p class="text-[10px] th-text-m">${t('時系列データなし')}</p></div>`;
@@ -2311,33 +2316,6 @@
             }});
           }
         });
-        // Gap decomposition line chart (interest/nonop/tax burden)
-        const gapCanvas = document.getElementById('dupontGapChart');
-        if (gapCanvas && (ts.interest_burden || ts.nonop_burden || ts.tax_burden)) {
-          const mkDs = (label, key, color) => ({
-            label, data: (ts[key]||[]).slice().reverse(), borderColor: color,
-            backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 2, tension: 0
-          });
-          new Chart(gapCanvas, {
-            type: 'line',
-            data: {
-              labels: dates,
-              datasets: [
-                mkDs(t('金利負担率'), 'interest_burden', '#D4852A'),
-                mkDs(t('営業外損益率'), 'nonop_burden', '#D4852A'),
-                mkDs(t('税引後利益率'), 'tax_burden', '#D4852A'),
-              ].filter(ds => ds.data.some(v => v !== null))
-            },
-            options: {
-              responsive: true, maintainAspectRatio: false,
-              plugins: { legend: { display: true, labels: { font: { size: 9 }, color: chartText, boxWidth: 12 } } },
-              scales: {
-                x: { grid: { display: false }, ticks: { font: { size: 8 }, color: chartText, maxRotation: 45 } },
-                y: { ticks: { font: { size: 9 }, color: chartText, callback: v => v + '%' }, grid: { color: chartGridY } }
-              }
-            }
-          });
-        }
       });
     }
 
@@ -2911,16 +2889,57 @@
             borderWidth: 0, borderRadius: 0, borderSkipped: false,
           }];
 
+      // ゼロ/欠損マーカー：値が0（データ実在）→実線、null/undefined（欠損）→破線
+      const zeroMarkerPlugin = {
+        id: 'zeroMarker',
+        afterDatasetsDraw(chart) {
+          const isBar = chart.config.type === 'bar';
+          const isLine = chart.config.type === 'line';
+          if (!isBar && !isLine) return;
+          const meta = chart.getDatasetMeta(0);
+          const data = chart.data.datasets[0]?.data || [];
+          const yScale = chart.scales.y;
+          if (!yScale || !meta) return;
+          const yZero = yScale.getPixelForValue(0);
+          const ctx = chart.ctx;
+          ctx.save();
+          ctx.lineWidth = 2.5;
+          data.forEach((v, i) => {
+            const pt = meta.data[i];
+            if (!pt) return;
+            const xc = pt.x;
+            const isZero = v === 0;
+            const isMissing = v == null || (typeof v === 'number' && isNaN(v));
+            if (!isZero && !isMissing) return;
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.setLineDash(isMissing ? [4, 3] : []);
+            if (isBar) {
+              const w = (pt.width || 20) * 0.85;
+              ctx.moveTo(xc - w/2, yZero);
+              ctx.lineTo(xc + w/2, yZero);
+            } else {
+              // 折れ線: y=0基準に縦ティック
+              ctx.moveTo(xc, yZero - 7);
+              ctx.lineTo(xc, yZero + 7);
+            }
+            ctx.stroke();
+          });
+          ctx.restore();
+        },
+      };
+
       modalChart = new Chart($('chartModalCanvas'), {
         type: modalChartType,
         data: { labels: cd.labels, datasets },
+        plugins: [zeroMarkerPlugin],
         options: {
           responsive: true, maintainAspectRatio: true,
           plugins: {
             legend: { display: false },
             tooltip: {
               mode: 'index', intersect: false,
-              callbacks: { label: ctx => label + ': ' + mFmt(ctx.parsed.y) },
+              callbacks: { label: ctx => label + ': ' + (ctx.parsed.y == null ? t('No Data') : mFmt(ctx.parsed.y)) },
             },
           },
           scales: {
@@ -2955,7 +2974,19 @@
 
       // 1) timeseries にキーがあれば全時系列を使う（最優先）
       if (ts[key] && Array.isArray(ts[key]) && ts[key].some(v => v !== null && v !== undefined)) {
-        return { labels: dates.slice().reverse(), data: ts[key].slice().reverse() };
+        const labels = dates.slice().reverse();
+        const data = ts[key].slice().reverse();
+        // 最新年が欠損していれば screening の現在値（trailing PER/PBR）で補完
+        if (data.length > 0 && data[data.length - 1] == null) {
+          const sc = (lastData || {}).screening || {};
+          const fillMap = {
+            pe_ratio: (sc['C-1_PER'] || {})['実績値'],
+            pb_ratio: (sc['C-2_PBR'] || {})['実績値'],
+          };
+          const fill = fillMap[key];
+          if (fill != null) data[data.length - 1] = fill;
+        }
+        return { labels, data };
       }
 
       // 2) raw_data に配列があればそれを使う（JSON mode — no Excel timeseries）
