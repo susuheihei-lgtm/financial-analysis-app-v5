@@ -1374,7 +1374,8 @@
       const companyName = inputCompanyVal || displayName || 'analysis';
       const filename = companyName.replace(/\s+/g, '_') + '_analysis.pdf';
 
-      const h2cOpt = { scale: 1.5, useCORS: true, scrollY: 0, windowWidth: 1280, logging: false };
+      const bgColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-0').trim() || '#0e0e12';
+      const h2cOpt = { scale: 2, useCORS: true, allowTaint: true, scrollY: 0, windowWidth: 1280, backgroundColor: bgColor, logging: false };
       const pdfOpt = { unit: 'mm', format: 'a4', orientation: 'portrait' };
 
       // エクスポート対象タブ（データがある場合のみ）
@@ -1382,42 +1383,65 @@
       if (selectedMetrics.size > 0) exportTabs.push('tab-custom');
       if (compRawData && compRawData.length) exportTabs.push('tab-competitor');
 
-      // 現在の表示状態を記憶
-      const tabContents = document.querySelectorAll('.tab-content');
-      const hiddenState = new Map();
-      tabContents.forEach(el => hiddenState.set(el.id, el.classList.contains('hidden')));
+      // 現在のアクティブタブを記憶
+      const activeTabBtn = document.querySelector('.tab-btn.tab-active');
+      const activeTabId = activeTabBtn ? activeTabBtn.getAttribute('data-tab') : 'analysis';
       const tabNav = $('tabNav');
 
-      try {
-        // タブナビを隠し、全タブを表示
-        tabNav.style.display = 'none';
-        tabContents.forEach(el => el.classList.remove('hidden'));
-        await new Promise(r => setTimeout(r, 200)); // DOM安定待ち
+      async function captureElement(el) {
+        const scrollH = Math.max(el.scrollHeight, el.offsetHeight);
+        return window.html2canvas(el, { ...h2cOpt, windowHeight: scrollH });
+      }
 
-        const pdf = new window.jspdf.jsPDF(pdfOpt);
+      function addCanvasToPdf(pdf, canvas, isFirst) {
+        const margin = 6;
         const pageW = pdf.internal.pageSize.getWidth();
         const pageH = pdf.internal.pageSize.getHeight();
+        const imgW = pageW - margin * 2;
+        const imgH = (canvas.height * imgW) / canvas.width;
+        const usableH = pageH - margin * 2;
+        const imgData = canvas.toDataURL('image/jpeg', 0.92);
 
-        for (let i = 0; i < exportTabs.length; i++) {
-          const tabEl = $(exportTabs[i]);
+        let yOffset = 0;
+        let firstPage = isFirst;
+        while (yOffset < imgH) {
+          if (!firstPage) pdf.addPage();
+          firstPage = false;
+          pdf.addImage(imgData, 'JPEG', margin, margin - yOffset, imgW, imgH, undefined, 'FAST');
+          yOffset += usableH;
+        }
+      }
+
+      try {
+        const pdf = new window.jspdf.jsPDF(pdfOpt);
+        let isFirstPage = true;
+
+        // 1ページ目: ヘッダー（会社名 + スコアカード）
+        const headerEl = document.querySelector('#dashboard .max-w-\\[1400px\\] > div:first-child');
+        const scoreEl = document.querySelector('#dashboard .grid.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-4');
+        // ヘッダーエリア全体（ヒーロー + スコアカード）をまとめてキャプチャ
+        const headerWrap = document.createElement('div');
+        headerWrap.style.cssText = `background:${bgColor};padding:16px;width:1280px;`;
+        if (headerEl) headerWrap.appendChild(headerEl.cloneNode(true));
+        if (scoreEl) headerWrap.appendChild(scoreEl.cloneNode(true));
+        document.body.appendChild(headerWrap);
+        const headerCanvas = await captureElement(headerWrap);
+        document.body.removeChild(headerWrap);
+        addCanvasToPdf(pdf, headerCanvas, true);
+        isFirstPage = false;
+
+        // 各タブを1つずつ切り替えてキャプチャ
+        for (const tabId of exportTabs) {
+          const tabEl = $(tabId);
           if (!tabEl) continue;
 
-          const canvas = await window.html2canvas(tabEl, { ...h2cOpt, windowHeight: tabEl.scrollHeight });
-          const imgData = canvas.toDataURL('image/jpeg', 0.92);
-          const margin = 8;
-          const imgW = pageW - margin * 2;
-          const imgH = (canvas.height * imgW) / canvas.width;
-          const usablePageH = pageH - margin * 2;
+          // タブを表示して他を非表示
+          document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+          tabEl.classList.remove('hidden');
+          await new Promise(r => setTimeout(r, 300)); // チャートレンダリング待ち
 
-          // 各ページにy座標オフセットで正しく分割配置
-          let yOffset = 0;
-          let firstPage = true;
-          while (yOffset < imgH) {
-            if (!firstPage || i > 0) pdf.addPage();
-            firstPage = false;
-            pdf.addImage(imgData, 'JPEG', margin, margin - yOffset, imgW, imgH, undefined, 'FAST');
-            yOffset += usablePageH;
-          }
+          const canvas = await captureElement(tabEl);
+          addCanvasToPdf(pdf, canvas, false);
         }
 
         pdf.save(filename);
@@ -1425,11 +1449,14 @@
         console.error('PDF export error:', err);
         alert(t('PDF export failed'));
       } finally {
-        // 元の表示状態に戻す
-        tabNav.style.display = '';
-        tabContents.forEach(el => {
-          if (hiddenState.get(el.id)) el.classList.add('hidden');
-          else el.classList.remove('hidden');
+        // 元のアクティブタブに戻す
+        document.querySelectorAll('.tab-btn').forEach(b => {
+          b.classList.toggle('tab-active', b.getAttribute('data-tab') === activeTabId);
+          b.classList.toggle('border-transparent', b.getAttribute('data-tab') !== activeTabId);
+        });
+        document.querySelectorAll('.tab-content').forEach(el => {
+          const tid = el.id.replace('tab-', '');
+          el.classList.toggle('hidden', tid !== activeTabId);
         });
         if (exportBtn.querySelector('span')) exportBtn.querySelector('span').textContent = origText;
         exportBtn.disabled = false;
