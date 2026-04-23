@@ -11,11 +11,11 @@ def analyze_roa_tree(d):
     roa = d.get("roa", [])
     op_margin = d.get("op_margin", [])
     rev_now = rev[0] if rev else None
-    rev_5y = rev[3] if len(rev) > 3 else None
+    rev_5y = rev[min(4, len(rev) - 1)] if rev else None
     roa_now = roa[0] if roa else None
-    roa_5y = roa[2] if len(roa) > 2 else None
+    roa_5y = roa[min(4, len(roa) - 1)] if roa else None
     op_now = op_margin[0] if op_margin else None
-    op_5y = op_margin[2] if len(op_margin) > 2 else None
+    op_5y = op_margin[min(4, len(op_margin) - 1)] if op_margin else None
     total_assets = d.get("total_assets")
     total_assets_5y = d.get("total_assets_5y")
     fixed_assets = d.get("fixed_assets")
@@ -68,7 +68,7 @@ def analyze_roa_tree(d):
 
     dso = safe_div(ar, rev_now) * 365 if (ar and rev_now) else None
     dso_5y_v = safe_div(ar_5y, rev_5y) * 365 if (ar_5y and rev_5y) else None
-    dso_chg = -(dso - dso_5y_v) if (dso and dso_5y_v) else None
+    dso_chg = dso - dso_5y_v if (dso and dso_5y_v) else None
 
     dpo = safe_div(ap, rev_now) * 365 if (ap and rev_now) else None
     dpo_5y_v = safe_div(ap_5y, rev_5y) * 365 if (ap_5y and rev_5y) else None
@@ -76,24 +76,27 @@ def analyze_roa_tree(d):
 
     dio = safe_div(inventory, cogs) * 365 if (inventory and cogs) else None
     dio_5y_v = safe_div(inventory_5y, cogs_5y) * 365 if (inventory_5y and cogs_5y) else None
-    dio_chg = -(dio - dio_5y_v) if (dio and dio_5y_v) else None
+    dio_chg = dio - dio_5y_v if (dio and dio_5y_v) else None
 
-    tree["DSO"] = {"現在値": dso, "5年変化": dso_chg, "評価": "改善" if dso_chg and dso_chg > 0 else ("悪化" if dso_chg and dso_chg < 0 else "横ばい")}
+    # DSO・DIO は低下が改善、DPO は上昇が改善
+    tree["DSO"] = {"現在値": dso, "5年変化": dso_chg, "評価": "改善" if dso_chg and dso_chg < 0 else ("悪化" if dso_chg and dso_chg > 0 else "横ばい")}
     tree["DPO"] = {"現在値": dpo, "5年変化": dpo_chg, "評価": "改善" if dpo_chg and dpo_chg > 0 else ("悪化" if dpo_chg and dpo_chg < 0 else "横ばい")}
-    tree["DIO"] = {"現在値": dio, "5年変化": dio_chg, "評価": "改善" if dio_chg and dio_chg > 0 else ("悪化" if dio_chg and dio_chg < 0 else "横ばい")}
+    tree["DIO"] = {"現在値": dio, "5年変化": dio_chg, "評価": "改善" if dio_chg and dio_chg < 0 else ("悪化" if dio_chg and dio_chg > 0 else "横ばい")}
 
+    _op_chg = op_now - op_5y if (op_now and op_5y) else None
     tree["営業利益率"] = {
         "現在値": op_now,
-        "5年変化pt": op_now - op_5y if (op_now and op_5y) else None,
+        "5年変化pt": _op_chg,
+        "評価": "改善" if _op_chg and _op_chg > 0 else ("悪化" if _op_chg and _op_chg < 0 else "横ばい"),
     }
 
     cogs_rate = safe_div(cogs, rev_now) * 100 if (cogs and rev_now) else None
     cogs_rate_5y = safe_div(cogs_5y, rev_5y) * 100 if (cogs_5y and rev_5y) else None
-    cogs_chg = -(cogs_rate - cogs_rate_5y) if (cogs_rate and cogs_rate_5y) else None
-    tree["原価率"] = {"現在値": cogs_rate, "5年変化": cogs_chg, "評価": "改善" if cogs_chg and cogs_chg > 0 else ("悪化" if cogs_chg and cogs_chg < 0 else "横ばい")}
+    cogs_chg = cogs_rate - cogs_rate_5y if (cogs_rate and cogs_rate_5y) else None
+    tree["原価率"] = {"現在値": cogs_rate, "5年変化": cogs_chg, "評価": "改善" if cogs_chg and cogs_chg < 0 else ("悪化" if cogs_chg and cogs_chg > 0 else "横ばい")}
 
-    sga_chg = -(sga - sga_5y) if (sga and sga_5y) else None
-    tree["販管費率"] = {"現在値": sga, "5年変化": sga_chg, "評価": "改善" if sga_chg and sga_chg > 0 else ("悪化" if sga_chg and sga_chg < 0 else "横ばい")}
+    sga_chg = sga - sga_5y if (sga and sga_5y) else None
+    tree["販管費率"] = {"現在値": sga, "5年変化": sga_chg, "評価": "改善" if sga_chg and sga_chg < 0 else ("悪化" if sga_chg and sga_chg > 0 else "横ばい")}
 
     contributions = {
         "有形固定資産回転率": tang_chg,
@@ -115,7 +118,7 @@ def analyze_roe_tree(d):
     rev = d.get("revenue", [])
     roe_vals = d.get("roe", [])
     rev_now = rev[0] if rev else None
-    rev_5y = rev[3] if len(rev) > 3 else None
+    rev_5y = rev[min(4, len(rev) - 1)] if rev else None
     net_income = d.get("net_income_val")
     net_income_5y = d.get("net_income_val_5y")
     total_assets = d.get("total_assets")
@@ -123,7 +126,7 @@ def analyze_roe_tree(d):
     total_equity = d.get("total_equity")
     total_equity_5y = d.get("total_equity_5y")
     roe_now = roe_vals[0] if roe_vals else None
-    roe_5y = roe_vals[2] if len(roe_vals) > 2 else None
+    roe_5y = roe_vals[min(4, len(roe_vals) - 1)] if roe_vals else None
 
     tree = {}
     tree["ROE"] = {
@@ -163,7 +166,7 @@ def analyze_roe_tree(d):
         "現在値": em,
         "5年前": em_5y,
         "5年変化": em_chg,
-        "評価": "横ばい",
+        "評価": "悪化" if em_chg and em_chg < 0 else ("改善" if em_chg and em_chg > 0 else "横ばい"),
     }
 
     # Verify: ROE ≈ NPM × AT × EM
@@ -174,7 +177,7 @@ def analyze_roe_tree(d):
     # Sub-decomposition of Net Profit Margin
     op_margin = d.get("op_margin", [])
     op_now = op_margin[0] if op_margin else None
-    op_5y = op_margin[2] if len(op_margin) > 2 else None
+    op_5y = op_margin[min(4, len(op_margin) - 1)] if op_margin else None
     cogs = d.get("cogs")
     cogs_5y = d.get("cogs_5y")
     sga = d.get("sga_ratio")
@@ -182,15 +185,17 @@ def analyze_roe_tree(d):
 
     cogs_rate = safe_div(cogs, rev_now) * 100 if (cogs and rev_now) else None
     cogs_rate_5y = safe_div(cogs_5y, rev_5y) * 100 if (cogs_5y and rev_5y) else None
-    cogs_chg = -(cogs_rate - cogs_rate_5y) if (cogs_rate is not None and cogs_rate_5y is not None) else None
-    tree["原価率"] = {"現在値": cogs_rate, "5年変化": cogs_chg, "評価": "改善" if cogs_chg and cogs_chg > 0 else ("悪化" if cogs_chg and cogs_chg < 0 else "横ばい")}
+    cogs_chg = cogs_rate - cogs_rate_5y if (cogs_rate is not None and cogs_rate_5y is not None) else None
+    tree["原価率"] = {"現在値": cogs_rate, "5年変化": cogs_chg, "評価": "改善" if cogs_chg and cogs_chg < 0 else ("悪化" if cogs_chg and cogs_chg > 0 else "横ばい")}
 
-    sga_chg = -(sga - sga_5y) if (sga is not None and sga_5y is not None) else None
-    tree["販管費率"] = {"現在値": sga, "5年変化": sga_chg, "評価": "改善" if sga_chg and sga_chg > 0 else ("悪化" if sga_chg and sga_chg < 0 else "横ばい")}
+    sga_chg = sga - sga_5y if (sga is not None and sga_5y is not None) else None
+    tree["販管費率"] = {"現在値": sga, "5年変化": sga_chg, "評価": "改善" if sga_chg and sga_chg < 0 else ("悪化" if sga_chg and sga_chg > 0 else "横ばい")}
 
+    _op_chg2 = op_now - op_5y if (op_now is not None and op_5y is not None) else None
     tree["営業利益率"] = {
         "現在値": op_now,
-        "5年変化pt": op_now - op_5y if (op_now is not None and op_5y is not None) else None,
+        "5年変化pt": _op_chg2,
+        "評価": "改善" if _op_chg2 and _op_chg2 > 0 else ("悪化" if _op_chg2 and _op_chg2 < 0 else "横ばい"),
     }
 
     # 営業利益→純利益ギャップ分解
@@ -283,9 +288,13 @@ def analyze_roe_tree(d):
     tree["棚卸資産回転率"] = {"現在値": inv_turn, "5年変化": inv_chg, "評価": "改善" if inv_chg and inv_chg > 0 else ("悪化" if inv_chg and inv_chg < 0 else "横ばい")}
 
     equity_ratio = d.get("equity_ratio")
+    equity_ratio_5y = d.get("equity_ratio_5y")
     debt_ratio = 100 - equity_ratio if equity_ratio is not None else None
-    tree["自己資本比率"] = {"現在値": equity_ratio}
-    tree["負債比率"] = {"現在値": debt_ratio}
+    debt_ratio_5y = 100 - equity_ratio_5y if equity_ratio_5y is not None else None
+    eq_chg = equity_ratio - equity_ratio_5y if (equity_ratio is not None and equity_ratio_5y is not None) else None
+    dr_chg = debt_ratio - debt_ratio_5y if (debt_ratio is not None and debt_ratio_5y is not None) else None
+    tree["自己資本比率"] = {"現在値": equity_ratio, "5年変化": eq_chg, "評価": "改善" if eq_chg and eq_chg > 0 else ("悪化" if eq_chg and eq_chg < 0 else "横ばい")}
+    tree["負債比率"] = {"現在値": debt_ratio, "5年変化": dr_chg, "評価": "改善" if dr_chg and dr_chg < 0 else ("悪化" if dr_chg and dr_chg > 0 else "横ばい")}
 
     # ROE Contribution ranking (DuPont factors)
     roe_contributions = {}

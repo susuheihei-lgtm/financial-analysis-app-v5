@@ -1082,6 +1082,7 @@
       'Profitability (ROE)':      { ja: '収益性（ROE）', en: 'Profitability (ROE)' },
       'per-desc':                 { ja: '株価 / 1株利益。市場の成長期待を反映', en: 'Price / EPS. Reflects market growth expectations' },
       'roe-desc':                 { ja: '純利益 / 自己資本。企業の収益力を示す', en: 'Net Income / Equity. Indicates profitability' },
+      'ROE-negative-warning':     { ja: 'ROEがマイナス（自己資本マイナス／債務超過）のため、PBR = ROE × PER の分解式は成立しません。以下の数値は参考値です。', en: 'ROE is negative (negative equity / insolvency), so PBR = ROE × PER decomposition is not valid. Values below are for reference only.' },
       'Return on Equity (DuPont)': { ja: '自己資本利益率 (デュポン分析)', en: 'Return on Equity (DuPont)' },
       'Net Profit Margin':         { ja: '純利益率', en: 'Net Profit Margin' },
       'Financial Leverage':        { ja: '財務レバレッジ', en: 'Financial Leverage' },
@@ -2109,13 +2110,13 @@
     function renderROETree(re, r) {
       const node = (label, val, chg, grade, unit='', benchField, benchMul, benchInvert) => {
         const clr = grade==='改善'?'#4ade80':(grade==='悪化'?'#f87171':'#6b7280');
-        const arrow = grade==='改善'?'&#9650;':(grade==='悪化'?'&#9660;':'');
+        const arrow = (chg!==null&&chg!==undefined) ? (chg>0?'&#9650;':(chg<0?'&#9660;':'')) : '';
         const bb = benchField ? benchBadge(benchField, benchMul, unit, benchInvert) : '';
         return `<div class="flex items-center justify-between p-3 th-bg-2 border mb-2" style="border-color:var(--border);border-radius:0">
           <div class="flex items-center gap-2"><span class="text-[11px] font-medium th-text-s">${label}</span>${bb}</div>
           <div class="flex items-center gap-3 tabular-nums">
             <span class="text-xs font-bold th-text">${fmtNum(val,2)}${unit}</span>
-            ${chg!==null&&chg!==undefined?`<span class="text-[11px] font-semibold" style="color:${clr}">${arrow} ${fmtNum(chg,2)}</span>`:''}
+            ${chg!==null&&chg!==undefined?`<span class="text-[11px] font-semibold" style="color:${clr}">${arrow} ${fmtNum(Math.abs(chg),2)}</span>`:''}
           </div></div>`;
       };
       const roe = re['ROE']||{};
@@ -2143,13 +2144,18 @@
             ${benchBadge('pbr', null, 'x')}
           </div>
         </div>
-        <div class="flex justify-center items-center gap-3 mb-8 text-sm th-text-m">
+        <div class="flex justify-center items-center gap-3 mb-3 text-sm th-text-m">
           <span class="px-4 py-2 th-bg-2 border font-bold text-xs tracking-wider" style="border-color:var(--border);border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace">PBR <strong class="th-text">${fmtNum(pbrVal,2)}x</strong></span>
           <span class="text-lg">=</span>
           <span class="px-4 py-2 th-bg-2 border font-bold text-xs tracking-wider cursor-pointer hover:border-brand/50 transition-all" style="border-color:var(--border);border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace" onclick="showItemChart('roe','ROE')">ROE <strong class="th-text">${fmtNum(roeVal,1)}%</strong></span>
           <span class="text-lg">&times;</span>
           <span class="px-4 py-2 th-bg-2 border font-bold text-xs tracking-wider cursor-pointer hover:border-brand/50 transition-all" style="border-color:var(--border);border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace" onclick="showItemChart('pe_ratio','PER')">PER <strong class="th-text">${fmtNum(perVal,1)}x</strong></span>
         </div>
+        ${roeVal !== null && roeVal < 0 ? `
+        <div class="flex items-center justify-center gap-2 mb-8 px-4 py-3 border border-yellow-500/30 max-w-xl mx-auto" style="background:rgba(234,179,8,0.07);border-radius:0">
+          <span class="text-yellow-400">⚠</span>
+          <p class="text-[11px] text-yellow-300">${t('ROE-negative-warning')}</p>
+        </div>` : '<div class="mb-8"></div>'}
 
         <!-- ===== PER & ROE side by side ===== -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
@@ -2213,7 +2219,7 @@
             <canvas id="dupontNPMChart" style="max-height:120px"></canvas>
             <div class="mt-4 ml-2 pl-3 border-l border-blue-500/20">
               <p class="text-[10px] th-text-m mb-2">&#9492; ${t('breakdown-npm')}</p>
-              ${node(t('営業利益率'), (re['営業利益率']||{})['現在値'], (re['営業利益率']||{})['5年変化pt'], null, '%', 'operating_margin', 100)}
+              ${node(t('営業利益率'), (re['営業利益率']||{})['現在値'], (re['営業利益率']||{})['5年変化pt'], (re['営業利益率']||{})['評価'], '%', 'operating_margin', 100)}
               <div class="ml-3 pl-3 border-l border-blue-500/10 mb-1">
                 ${node(t('原価率'), (re['原価率']||{})['現在値'], (re['原価率']||{})['5年変化'], (re['原価率']||{})['評価'], '%')}
                 ${node(t('販管費率'), (re['販管費率']||{})['現在値'], (re['販管費率']||{})['5年変化'], (re['販管費率']||{})['評価'], '%')}
@@ -2249,17 +2255,26 @@
             <canvas id="dupontLEVChart" style="max-height:120px"></canvas>
             <div class="mt-4 ml-2 pl-3 border-l border-amber-500/20">
               <p class="text-[10px] th-text-m mb-2">&#9492; ${t('breakdown-lev')}</p>
-              ${node(t('財務レバレッジ'), em['現在値'], em['5年変化'], em['5年変化'] > 0 ? '上昇' : (em['5年変化'] < 0 ? '低下' : '横ばい'), 'x')}
+              ${node(t('財務レバレッジ'), em['現在値'], em['5年変化'], em['評価'], 'x')}
               <div class="ml-3 pl-3 border-l border-amber-500/10 mb-1">
-                ${node(t('自己資本比率'), (re['自己資本比率']||{})['現在値'], null, null, '%')}
-                ${node(t('負債比率'), (re['負債比率']||{})['現在値'], null, null, '%')}
+                ${node(t('自己資本比率'), (re['自己資本比率']||{})['現在値'], (re['自己資本比率']||{})['5年変化'], (re['自己資本比率']||{})['評価'], '%')}
+                ${node(t('負債比率'), (re['負債比率']||{})['現在値'], (re['負債比率']||{})['5年変化'], (re['負債比率']||{})['評価'], '%')}
               </div>
             </div>
           </div>
         </div>
 
         <!-- ===== PBR Contribution Ranking ===== -->
-        ${buildPBRContribution()}
+        ${roeVal !== null && roeVal < 0 ? `
+        <div class="mt-12 pt-8 border-t" style="border-color:var(--border)">
+          <div class="text-center mb-4">
+            <p class="v0-section-label mb-2">${t('PBR Driver Analysis')}</p>
+          </div>
+          <div class="flex items-center justify-center gap-2 px-6 py-4 border border-yellow-500/30 max-w-xl mx-auto" style="background:rgba(234,179,8,0.07);border-radius:0">
+            <span class="text-yellow-400 text-lg">⚠</span>
+            <p class="text-xs text-yellow-300">${t('ROE-negative-warning')}</p>
+          </div>
+        </div>` : buildPBRContribution()}
         `;
 
       // Render mini PER/ROE charts in PBR Decomposition
