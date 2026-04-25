@@ -160,6 +160,8 @@ def _build_analysis_response(data, ts_data, benchmark, investor_profile):
 
     if ts_data:
         result['timeseries'] = ts_data
+    if data.get('current_price') is not None:
+        result['current_price'] = data['current_price']
     if benchmark:
         try:
             result['dynamic_thresholds'] = generate_dynamic_thresholds(benchmark, profile=investor_profile)
