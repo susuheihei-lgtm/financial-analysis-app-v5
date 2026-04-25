@@ -24,6 +24,7 @@ except ImportError:
     pass
 
 from flask import Flask, render_template, request, jsonify, session
+from flask_caching import Cache
 from analyzer import run_full_analysis, INDUSTRY_LIST, generate_dynamic_thresholds
 from excel_parser import parse_excel, scan_available_metrics, extract_custom_timeseries
 from yfinance_parser import parse_yfinance
@@ -51,6 +52,16 @@ if not _secret:
     _secret = secrets.token_hex(32)
     logging.warning("開発用: SECRET_KEY をランダム生成しました。本番では環境変数で固定してください。")
 app.secret_key = _secret
+
+# ── キャッシュ設定（REDIS_URL があれば Redis、なければメモリ）──────────────────
+_redis_url = os.environ.get('REDIS_URL')
+if _redis_url:
+    app.config['CACHE_TYPE'] = 'RedisCache'
+    app.config['CACHE_REDIS_URL'] = _redis_url
+else:
+    app.config['CACHE_TYPE'] = 'SimpleCache'
+app.config['CACHE_DEFAULT_TIMEOUT'] = 3600  # 1時間
+cache = Cache(app)
 
 # ── L1: Cookieセキュリティフラグ ──────────────────────────────────────────────
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -238,7 +249,9 @@ def analyze():
         benchmark = _damodaran_data.get(selected_industry)
         investor_profile = request.form.get('investor_profile', 'balanced')
 
-        return jsonify(_build_analysis_response(data, ts_data, benchmark, investor_profile))
+        response_data = _build_analysis_response(data, ts_data, benchmark, investor_profile)
+        cache.set(cache_key, response_data, timeout=3600)
+        return jsonify(response_data)
 
     except ImportError as e:
         return _error_response('必要なライブラリが不足しています。管理者にお問い合わせください。', 500, e)
@@ -269,6 +282,12 @@ def fetch_ticker():
             'error': '無効なティッカー形式です。'
                      '日本株は "7203.T"、米国株は "AAPL" のように入力してください（英数字・ドット・ハイフンのみ）。'
         }), 400
+
+    # キャッシュから返す（同一ティッカーは1時間再利用）
+    cache_key = f'ticker:{symbol}'
+    cached = cache.get(cache_key)
+    if cached:
+        return jsonify(cached)
 
     try:
         data, ts_data = parse_yfinance(symbol)
