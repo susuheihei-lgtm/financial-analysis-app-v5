@@ -79,11 +79,24 @@ _SEC_BALANCE_TAGS = {
     'retained_earnings': ['RetainedEarningsAccumulatedDeficit'],
 }
 _SEC_CASHFLOW_TAGS = {
-    'ocf': ['NetCashProvidedByUsedInOperatingActivities'],
-    'capex': ['PaymentsToAcquirePropertyPlantAndEquipment'],
-    'investing_cf': ['NetCashProvidedByUsedInInvestingActivities'],
-    'financing_cf': ['NetCashProvidedByUsedInFinancingActivities'],
-    'da': ['DepreciationDepletionAndAmortization'],
+    'ocf': [
+        'NetCashProvidedByUsedInOperatingActivities',
+        'NetCashProvidedByUsedInOperatingActivitiesContinuingOperations',
+    ],
+    'capex': [
+        'PaymentsToAcquirePropertyPlantAndEquipment',
+        'PaymentsToAcquirePropertyPlantAndEquipmentContinuingOperations',
+        'PaymentsToAcquireProductiveAssets',
+    ],
+    'investing_cf': [
+        'NetCashProvidedByUsedInInvestingActivities',
+        'NetCashProvidedByUsedInInvestingActivitiesContinuingOperations',
+    ],
+    'financing_cf': [
+        'NetCashProvidedByUsedInFinancingActivities',
+        'NetCashProvidedByUsedInFinancingActivitiesContinuingOperations',
+    ],
+    'da': ['DepreciationDepletionAndAmortization', 'DepreciationAndAmortization'],
 }
 _SEC_EPS_TAGS = {
     'eps': ['EarningsPerShareBasic'],
@@ -1363,5 +1376,12 @@ def parse_yfinance(ticker_symbol):
     ts_data["_analyst_upside"] = analyst_upside
     ts_data["_current_price"] = current_price
     ts_data["_eff_tax_rate_now"] = round(eff_tax_now * 100, 1)
+
+    # 全時系列配列を dates 長に揃える（短い場合は末尾を None で埋める）
+    # これにより、フロントエンドで欠損年が N/A として正しく描画される
+    for _k, _v in ts_data.items():
+        if isinstance(_v, list) and not _k.startswith('_') and _k != 'dates':
+            if len(_v) < n:
+                ts_data[_k] = _v + [None] * (n - len(_v))
 
     return data, ts_data
