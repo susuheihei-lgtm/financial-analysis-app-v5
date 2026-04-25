@@ -557,50 +557,6 @@ def _assess_ownership(major_holders_df):
     return "○"
 
 
-def _get_analyst_consensus(recommendations_df):
-    """アナリスト推奨から合意評価を返す。"""
-    if recommendations_df is None or recommendations_df.empty:
-        return None, None
-    try:
-        # 直近30件を対象
-        recent = recommendations_df.tail(30)
-        grade_col = None
-        for col in ['To Grade', 'toGrade', 'Action']:
-            if col in recent.columns:
-                grade_col = col
-                break
-        if grade_col is None:
-            return None, None
-
-        grades = recent[grade_col].dropna().str.lower()
-        buy_kw = ['buy', 'outperform', 'overweight', 'strong buy', 'accumulate', 'add']
-        sell_kw = ['sell', 'underperform', 'underweight', 'strong sell', 'reduce']
-        hold_kw = ['hold', 'neutral', 'equal weight', 'market perform', 'in-line']
-
-        buys = sum(1 for g in grades if any(k in g for k in buy_kw))
-        sells = sum(1 for g in grades if any(k in g for k in sell_kw))
-        holds = sum(1 for g in grades if any(k in g for k in hold_kw))
-        total = buys + sells + holds
-        if total == 0:
-            return None, None
-
-        buy_pct = buys / total
-        sell_pct = sells / total
-        if buy_pct >= 0.60:
-            consensus = "Strong Buy"
-        elif buy_pct >= 0.40:
-            consensus = "Buy"
-        elif sell_pct >= 0.40:
-            consensus = "Sell"
-        else:
-            consensus = "Hold"
-
-        return consensus, {"buy": buys, "hold": holds, "sell": sells}
-    except Exception as e:
-        logger.warning("_get_analyst_consensus: アナリスト推奨集計失敗: %s", e)
-        return None, None
-
-
 def _get_risk_free_rate(is_jpy: bool = False) -> float:
     """リスクフリーレートを返す。米国株は^TNX（24hキャッシュ）、日本株はJGB~1%を使用。"""
     if is_jpy:
@@ -767,11 +723,6 @@ def parse_yfinance(ticker_symbol):
         sustainability_df = ticker.sustainability
     except Exception:
         sustainability_df = None
-
-    try:
-        recommendations_df = ticker.recommendations
-    except Exception:
-        recommendations_df = None
 
     try:
         major_holders_df = ticker.major_holders
@@ -1111,18 +1062,12 @@ def parse_yfinance(ticker_symbol):
     per_now = per if per is not None else (per_ts[0] if per_ts else None)
     pbr_now = pbr if pbr is not None else (pbr_ts[0] if pbr_ts else None)
 
-    # ── アナリスト評価 ────────────────────────────────────────────────────────
-    analyst_consensus, analyst_breakdown = _get_analyst_consensus(recommendations_df)
-    analyst_target = _safe(info.get('targetMeanPrice'))
-    current_price = _safe(info.get('currentPrice') or info.get('regularMarketPrice'))
     # priceToBook / pbr_ts が両方 None の場合、bookValue (per share) で補完
-    if pbr_now is None and current_price and current_price > 0:
+    _current_price = _safe(info.get('currentPrice') or info.get('regularMarketPrice'))
+    if pbr_now is None and _current_price and _current_price > 0:
         bvps = _safe(info.get('bookValue'))
         if bvps and bvps > 0:
-            pbr_now = _safe(current_price / bvps)
-    analyst_upside = None
-    if analyst_target and current_price and current_price > 0:
-        analyst_upside = ((analyst_target - current_price) / current_price) * 100
+            pbr_now = _safe(_current_price / bvps)
 
     # ── 配当成長率（CAGR）────────────────────────────────────────────────────
     div_growth_rate = _calc_dividend_growth_rate(dividends_series)
@@ -1138,6 +1083,7 @@ def parse_yfinance(ticker_symbol):
         "company": company_name,
         "ticker": ticker_symbol,
         "industry": industry,
+        "current_price": _current_price,
 
         "revenue": [g('revenue', i) for i in range(n)],
         "fcf": [g('fcf', i) for i in range(len(fcf_list))],
@@ -1370,11 +1316,6 @@ def parse_yfinance(ticker_symbol):
     ts_data["_beta"] = beta
     ts_data["_risk_free_rate"] = rf_rate * 100
     ts_data["_equity_premium"] = equity_premium * 100
-    ts_data["_analyst_consensus"] = analyst_consensus
-    ts_data["_analyst_breakdown"] = analyst_breakdown
-    ts_data["_analyst_target"] = analyst_target
-    ts_data["_analyst_upside"] = analyst_upside
-    ts_data["_current_price"] = current_price
     ts_data["_eff_tax_rate_now"] = round(eff_tax_now * 100, 1)
 
     # 全時系列配列を dates 長に揃える（短い場合は末尾を None で埋める）

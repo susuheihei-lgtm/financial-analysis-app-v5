@@ -578,6 +578,7 @@
               <span id="industryBadge" class="font-plex-mono text-[10px] tracking-[0.14em] uppercase th-text-m"></span>
             </div>
             <h2 id="companyName" class="font-bebas text-[clamp(2.4rem,4vw,4.5rem)] leading-none tracking-[0.02em] uppercase"></h2>
+            <p id="currentPriceDisplay" class="hidden font-plex-mono text-sm mt-2 tracking-wider" style="color:var(--accent-v0)"></p>
           </div>
           <div id="verdictCard" class="text-center px-10 py-6 glow-accent w-full sm:w-auto" style="border-radius:0">
             <p class="v0-section-label mb-2" style="opacity:0.6" data-i18n="Investment Verdict">Investment Verdict</p>
@@ -1856,6 +1857,20 @@
       $('companyName').textContent = data.company || 'Untitled';
       $('tickerBadge').textContent = data.ticker || '—';
       $('industryBadge').textContent = data.industry || '';
+
+      const priceEl = $('currentPriceDisplay');
+      if (priceEl) {
+        if (data.current_price != null) {
+          const sym = currentCurrencySymbol || '$';
+          const priceStr = data.current_price >= 1000
+            ? fmtNum(data.current_price, 0)
+            : fmtNum(data.current_price, 2);
+          priceEl.textContent = `${sym} ${priceStr}`;
+          priceEl.classList.remove('hidden');
+        } else {
+          priceEl.classList.add('hidden');
+        }
+      }
 
       // Profile badge
       const profBadge = $('profileBadge');
