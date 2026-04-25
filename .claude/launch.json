@@ -2,8 +2,8 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "Flask Dev Server",
-      "runtimeExecutable": "/Users/iwasaosamutaira/Desktop/マイデジタルプロダクト/ウェブアプリ/financial anarlysis automation v5/.venv/bin/python3",
+      "name": "financial-analysis",
+      "runtimeExecutable": ".venv/bin/python3",
       "runtimeArgs": ["app.py"],
       "port": 5050
     }
