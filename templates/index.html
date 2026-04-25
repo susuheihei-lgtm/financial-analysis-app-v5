@@ -197,6 +197,22 @@
     .score-card-accent::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--accent-v0); transform:scaleX(0); transform-origin:left; transition:transform 0.4s var(--ease-luxury); }
     .score-card-accent:hover::before { transform:scaleX(1); }
 
+    /* Dashboard top padding — responsive to header height */
+    .dashboard-pt { padding-top: calc(56px + 1rem); }
+    @media (min-width: 640px) { .dashboard-pt { padding-top: calc(72px + 2rem); } }
+
+    /* Tab nav fade-right indicator on mobile */
+    .tab-nav-wrap { position: relative; }
+    .tab-nav-wrap::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0; bottom: 0;
+      width: 40px;
+      pointer-events: none;
+      background: linear-gradient(to right, transparent, var(--bg-0));
+    }
+    @media (min-width: 640px) { .tab-nav-wrap::after { display: none; } }
+
     /* Investor Profile Cards — V0 editorial */
     .profile-card {
       display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -370,30 +386,30 @@
 
   <!-- Header — V0 Editorial style -->
   <header class="fixed top-0 w-full z-50 th-header backdrop-blur-xl border-b" style="border-color:var(--border)">
-    <div class="max-w-[1400px] mx-auto px-4 sm:px-8 h-[72px] flex items-center justify-between">
-      <div class="flex items-center gap-4">
+    <div class="max-w-[1400px] mx-auto px-3 sm:px-8 h-[56px] sm:h-[72px] flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2 sm:gap-4 min-w-0">
         <!-- V0-style wordmark -->
         <div class="w-7 h-7 flex items-center justify-center flex-shrink-0 border" style="border-color:var(--accent-v0)">
           <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="color:var(--accent-v0)">
             <path d="M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 3h2v-2h2v2h2v2h-2v2h-2v-2h-2v-2z"/>
           </svg>
         </div>
-        <div>
-          <span class="block font-bebas text-[18px] tracking-[0.12em] uppercase" data-i18n="Stock Analyzer">Stock Analyzer</span>
-          <span class="block font-plex-mono text-[9px] tracking-[0.2em] uppercase" style="color:var(--accent-v0)" data-i18n="Financial Intelligence">Financial Intelligence</span>
+        <div class="min-w-0">
+          <span class="block font-bebas text-[16px] sm:text-[18px] tracking-[0.12em] uppercase truncate" data-i18n="Stock Analyzer">Stock Analyzer</span>
+          <span class="hidden sm:block font-plex-mono text-[9px] tracking-[0.2em] uppercase" style="color:var(--accent-v0)" data-i18n="Financial Intelligence">Financial Intelligence</span>
         </div>
       </div>
-      <div class="flex items-center gap-3">
-        <button id="langToggle" class="font-plex-mono text-[10px] font-medium tracking-[0.2em] uppercase px-3 py-1.5 border transition-all duration-200" style="border-color:var(--border-s);border-radius:0;color:var(--text-m)" onmouseover="this.style.borderColor='var(--accent-v0)';this.style.color='var(--accent-v0)'" onmouseout="this.style.borderColor='var(--border-s)';this.style.color='var(--text-m)'" title="Toggle language" aria-label="Toggle language between English and Japanese">EN / JA</button>
+      <div class="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+        <button id="langToggle" class="font-plex-mono text-[10px] font-medium tracking-[0.2em] uppercase px-2 sm:px-3 py-1.5 border transition-all duration-200" style="border-color:var(--border-s);border-radius:0;color:var(--text-m)" onmouseover="this.style.borderColor='var(--accent-v0)';this.style.color='var(--accent-v0)'" onmouseout="this.style.borderColor='var(--border-s)';this.style.color='var(--text-m)'" title="Toggle language" aria-label="Toggle language between English and Japanese"><span class="sm:hidden">JA</span><span class="hidden sm:inline">EN / JA</span></button>
         <button id="themeToggle" class="theme-toggle" title="Toggle theme" aria-label="Toggle dark and light theme" aria-pressed="false">
           <span class="theme-toggle-icon moon" aria-hidden="true">🌙</span>
           <span class="theme-toggle-icon sun" aria-hidden="true">☀️</span>
         </button>
-        <button id="btnExport" class="hidden font-plex-mono text-[10px] font-medium tracking-[0.2em] uppercase px-5 py-2 border transition-all duration-200" style="border-color:var(--border-s);border-radius:0" onmouseover="this.style.borderColor='var(--accent-v0)';this.style.color='var(--accent-v0)'" onmouseout="this.style.borderColor='var(--border-s)';this.style.color=''">
-          <span data-i18n="Export">Export</span>
+        <button id="btnExport" class="hidden font-plex-mono text-[10px] font-medium tracking-[0.2em] uppercase px-2 sm:px-5 py-2 border transition-all duration-200" style="border-color:var(--border-s);border-radius:0" onmouseover="this.style.borderColor='var(--accent-v0)';this.style.color='var(--accent-v0)'" onmouseout="this.style.borderColor='var(--border-s)';this.style.color=''">
+          <span class="sm:hidden">PDF</span><span class="hidden sm:inline" data-i18n="Export">Export</span>
         </button>
-        <button id="btnReset" class="hidden font-plex-mono text-[10px] font-medium tracking-[0.2em] uppercase px-5 py-2 border transition-all duration-200" style="border-color:var(--border-s);border-radius:0" onmouseover="this.style.borderColor='var(--accent-v0)';this.style.color='var(--accent-v0)'" onmouseout="this.style.borderColor='var(--border-s)';this.style.color=''">
-          <span data-i18n="New Analysis">New Analysis</span>
+        <button id="btnReset" class="hidden font-plex-mono text-[10px] font-medium tracking-[0.2em] uppercase px-2 sm:px-5 py-2 border transition-all duration-200" style="border-color:var(--border-s);border-radius:0" onmouseover="this.style.borderColor='var(--accent-v0)';this.style.color='var(--accent-v0)'" onmouseout="this.style.borderColor='var(--border-s)';this.style.color=''">
+          <span class="sm:hidden">↺</span><span class="hidden sm:inline" data-i18n="New Analysis">New Analysis</span>
         </button>
       </div>
     </div>
@@ -401,7 +417,7 @@
 
   <main id="mainContent">
   <!-- Upload Section — V0 editorial style with hero background -->
-  <section id="uploadSection" class="hero-bg pt-[72px] min-h-screen flex items-center justify-center px-4 sm:px-8">
+  <section id="uploadSection" class="hero-bg pt-[56px] sm:pt-[72px] min-h-screen flex items-center justify-center px-4 sm:px-8">
     <div class="max-w-lg w-full fade-up hero-ui-panel">
       <!-- V0 Editorial eyebrow + heading -->
       <div class="text-center mb-14">
@@ -545,7 +561,7 @@
   </section>
 
   <!-- Dashboard — V0 editorial style -->
-  <section id="dashboard" class="hidden pb-16 px-4 sm:px-8" style="padding-top:calc(72px + 2rem)">
+  <section id="dashboard" class="hidden pb-16 px-4 sm:px-8 dashboard-pt">
     <div class="max-w-[1400px] mx-auto">
 
       <!-- Hero Header — V0 editorial layout with image -->
@@ -587,7 +603,7 @@
       </div>
 
       <!-- Tabs — thin underline style -->
-      <div class="mb-8">
+      <div class="mb-8 tab-nav-wrap">
         <nav class="flex gap-0 border-b overflow-x-auto scrollbar-hide" id="tabNav" role="tablist" aria-label="Analysis sections" style="border-color:var(--border-s)">
           <button class="tab-btn tab-active px-6 py-4 text-[10px] font-semibold uppercase tracking-[0.18em] border-b-2 transition-all duration-300 whitespace-nowrap flex-shrink-0" style="font-family:'IBM Plex Mono','Courier New',monospace" role="tab" aria-selected="true" aria-controls="tab-analysis" data-tab="analysis" data-i18n="Analysis">Analysis</button>
           <button class="tab-btn px-6 py-4 text-[10px] font-semibold uppercase tracking-[0.18em] th-text-m border-b-2 border-transparent transition-all duration-300 whitespace-nowrap flex-shrink-0" style="font-family:'IBM Plex Mono','Courier New',monospace" role="tab" aria-selected="false" aria-controls="tab-roe" data-tab="roe" data-i18n="PBR Decomposition">PBR Decomposition</button>
@@ -2153,12 +2169,12 @@
         <div class="text-center mb-6">
           <p class="v0-section-label mb-2">${t('PBR Decomposition')}</p>
           ${roeVal !== null && roeVal < 0 ? `
-          <div class="inline-block px-14 py-6 th-bg-2 border-2" style="border-color:#4b5563;border-radius:0">
+          <div class="inline-block px-6 sm:px-14 py-6 th-bg-2 border-2" style="border-color:#4b5563;border-radius:0">
             <p class="text-[10px] uppercase tracking-[0.2em] th-text-m mb-1" style="font-family:'IBM Plex Mono','Courier New',monospace">PBR</p>
             <p class="text-4xl font-bold tabular-nums" style="color:#4b5563;font-family:'IBM Plex Mono','Courier New',monospace">N/A</p>
             <p class="text-xs mt-2 th-text-m">${currentLang==='ja'?'分解不成立（ROE < 0）':'Decomposition N/A (ROE < 0)'}</p>
           </div>` : `
-          <div class="inline-block px-14 py-6 th-bg-2 border-2" style="border-color:var(--brand);border-radius:0">
+          <div class="inline-block px-6 sm:px-14 py-6 th-bg-2 border-2" style="border-color:var(--brand);border-radius:0">
             <p class="text-[10px] uppercase tracking-[0.2em] th-text-m mb-1" style="font-family:'IBM Plex Mono','Courier New',monospace">PBR</p>
             <p class="text-5xl font-bold tabular-nums" style="color:var(--brand);font-family:'IBM Plex Mono','Courier New',monospace">${fmtNum(pbrVal,2)}<span class="text-2xl th-text-m">x</span></p>
             <p class="text-xs mt-2">${(()=>{const _j=pbrData['判定'];const _l=_j==='◎'?t('割安'):_j==='○'?t('適正水準'):_j==='▲'?t('やや割高'):_j==='×'?t('割高'):null;return _l?`<span style="color:${gradeColor(_j)}">${_l}</span>`:'<span class="th-text-m">—</span>';})()}</p>
@@ -2166,7 +2182,7 @@
             ${benchBadge('pbr', null, 'x')}
           </div>`}
         </div>
-        <div class="flex justify-center items-center gap-3 mb-3 text-sm th-text-m">
+        <div class="flex flex-wrap justify-center items-center gap-2 sm:gap-3 mb-3 text-sm th-text-m">
           <span class="px-4 py-2 th-bg-2 border font-bold text-xs tracking-wider" style="border-color:var(--border);border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace">PBR <strong class="${roeVal !== null && roeVal < 0 ? 'text-gray-500' : 'th-text'}">${roeVal !== null && roeVal < 0 ? 'N/A' : fmtNum(pbrVal,2,'x')}</strong></span>
           <span class="text-lg">=</span>
           <span class="px-4 py-2 th-bg-2 border font-bold text-xs tracking-wider cursor-pointer hover:border-brand/50 transition-all" style="border-color:var(--border);border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace" onclick="showItemChart('roe','ROE')">ROE <strong class="th-text">${fmtNum(roeVal,1,'%')}</strong></span>
@@ -2994,10 +3010,19 @@
       }
     });
 
+    function updateLangToggleLabel(lang) {
+      const btn = $('langToggle');
+      if (!btn) return;
+      const mobile = btn.querySelector('.sm\\:hidden');
+      const desktop = btn.querySelector('.hidden.sm\\:inline');
+      if (mobile) mobile.textContent = lang === 'en' ? 'JA' : 'EN';
+      if (desktop) desktop.textContent = lang === 'en' ? 'EN / JA' : 'JA / EN';
+    }
+
     $('langToggle').addEventListener('click', () => {
       currentLang = currentLang === 'en' ? 'ja' : 'en';
       localStorage.setItem('lang', currentLang);
-      $('langToggle').textContent = currentLang === 'en' ? 'EN / JA' : 'JA / EN';
+      updateLangToggleLabel(currentLang);
       applyLang();
       // プロファイル説明文を言語に合わせて更新
       selectProfile(selectedInvestorProfile);
@@ -3005,7 +3030,7 @@
 
     // Init language
     if (currentLang === 'ja') {
-      $('langToggle').textContent = 'JA / EN';
+      updateLangToggleLabel('ja');
       applyLang();
     }
 
