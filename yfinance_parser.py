@@ -240,8 +240,10 @@ def _get_sec_annual_series(
         if not entries:
             continue
 
-        # 10-K のみ → fy でグループ化（最新filed優先）
-        # fp == 'FY' は古い報告書では 'Q4' や空の場合もあるため form のみでフィルタ
+        # 10-K のみ → fy でグループ化
+        # 優先順位: ①filed日が新しい ②同一filed内はend年がfyと一致 ③それでも同点は値が大きい
+        # 背景: 10-Kには当期＋比較期間データが全て同一fyタグで入ることがあり、
+        #       また年間合計と四半期値が同一end日に重複するケースもある（例: LLY）。
         by_fy: dict[int, dict] = {}
         for e in entries:
             if e.get('form') != '10-K':
@@ -250,8 +252,24 @@ def _get_sec_annual_series(
             if fy is None:
                 continue
             prev = by_fy.get(fy)
-            if prev is None or e.get('filed', '') > prev.get('filed', ''):
+            if prev is None:
                 by_fy[fy] = e
+                continue
+            e_filed = e.get('filed', '')
+            p_filed = prev.get('filed', '')
+            if e_filed > p_filed:
+                by_fy[fy] = e
+            elif e_filed == p_filed:
+                e_end_yr = int(e.get('end', '0000')[:4]) if e.get('end') else 0
+                p_end_yr = int(prev.get('end', '0000')[:4]) if prev.get('end') else 0
+                e_match = (e_end_yr == fy)
+                p_match = (p_end_yr == fy)
+                if e_match and not p_match:
+                    by_fy[fy] = e  # 当期エントリを優先
+                elif e_match == p_match:
+                    # 同点 → 値が大きい方（年間合計 > 四半期値）
+                    if (e.get('val') or 0) > (prev.get('val') or 0):
+                        by_fy[fy] = e
 
         # 優先タグにないFYのみ補完（先頭タグ優先）
         for fy, e in by_fy.items():
