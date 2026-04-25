@@ -2489,31 +2489,89 @@
             const yScale = chart.scales.y;
             if (!yScale) return;
             const yZero = yScale.getPixelForValue(0);
+            const yTop = yScale.top;
             let color = ds.borderColor;
             if (!color || color === 'transparent') {
               const bg = typeof ds.backgroundColor === 'string' ? ds.backgroundColor : '';
               color = /^#[0-9a-fA-F]{6}/.test(bg) ? bg.slice(0, 7) : '#D4852A';
             }
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 1.5;
             data.forEach((v, i) => {
               const pt = meta.data[i];
               if (!pt) return;
               const isZero = v === 0;
               const isMissing = v == null || (typeof v === 'number' && isNaN(v));
               if (!isZero && !isMissing) return;
-              ctx.beginPath();
-              ctx.strokeStyle = color;
-              ctx.setLineDash(isMissing ? [4, 3] : []);
+
               if (isBar) {
                 const w = (pt.width || 20) * 0.85;
-                ctx.moveTo(pt.x - w / 2, yZero);
-                ctx.lineTo(pt.x + w / 2, yZero);
+                if (isMissing) {
+                  // 欠損: 薄い背景塗り + 点線枠 + 水平ティック + "N/A"テキスト
+                  const slotH = Math.max(24, (yZero - yTop) * 0.25);
+                  const slotTop = yZero - slotH;
+                  // 薄い背景
+                  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+                  ctx.fillRect(pt.x - w / 2, yTop, w, yZero - yTop);
+                  // 点線枠（上部のみ）
+                  ctx.strokeStyle = color + '55';
+                  ctx.setLineDash([3, 3]);
+                  ctx.lineWidth = 1;
+                  ctx.strokeRect(pt.x - w / 2, slotTop, w, slotH);
+                  ctx.setLineDash([]);
+                  // 水平ティック（y=0）
+                  ctx.strokeStyle = color + '99';
+                  ctx.lineWidth = 1.5;
+                  ctx.setLineDash([4, 3]);
+                  ctx.beginPath();
+                  ctx.moveTo(pt.x - w / 2, yZero);
+                  ctx.lineTo(pt.x + w / 2, yZero);
+                  ctx.stroke();
+                  ctx.setLineDash([]);
+                  // "N/A"テキスト
+                  ctx.fillStyle = color + '88';
+                  ctx.font = 'bold 8px IBM Plex Mono, monospace';
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'middle';
+                  ctx.fillText('N/A', pt.x, slotTop + slotH / 2);
+                } else {
+                  // ゼロ: 実線水平ティック
+                  ctx.beginPath();
+                  ctx.strokeStyle = color;
+                  ctx.lineWidth = 2;
+                  ctx.setLineDash([]);
+                  ctx.moveTo(pt.x - w / 2, yZero);
+                  ctx.lineTo(pt.x + w / 2, yZero);
+                  ctx.stroke();
+                }
               } else {
-                ctx.moveTo(pt.x, yZero - 7);
-                ctx.lineTo(pt.x, yZero + 7);
+                // 折れ線: ゼロ=縦ティック、欠損=×マーカー
+                if (isMissing) {
+                  const sz = 5;
+                  ctx.strokeStyle = color + '99';
+                  ctx.lineWidth = 1.5;
+                  ctx.setLineDash([]);
+                  ctx.beginPath();
+                  ctx.moveTo(pt.x - sz, yZero - sz);
+                  ctx.lineTo(pt.x + sz, yZero + sz);
+                  ctx.moveTo(pt.x + sz, yZero - sz);
+                  ctx.lineTo(pt.x - sz, yZero + sz);
+                  ctx.stroke();
+                  // "N/A"テキスト（×の上）
+                  ctx.fillStyle = color + '88';
+                  ctx.font = '7px IBM Plex Mono, monospace';
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'bottom';
+                  ctx.fillText('N/A', pt.x, yZero - sz - 2);
+                } else {
+                  ctx.beginPath();
+                  ctx.strokeStyle = color;
+                  ctx.lineWidth = 2;
+                  ctx.setLineDash([]);
+                  ctx.moveTo(pt.x, yZero - 7);
+                  ctx.lineTo(pt.x, yZero + 7);
+                  ctx.stroke();
+                }
               }
-              ctx.stroke();
-              ctx.setLineDash([]);
             });
           });
           ctx.restore();
