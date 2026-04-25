@@ -3448,5 +3448,86 @@
     const origBtnSample = $('btnSample');
     origBtnSample.addEventListener('click', () => { setTimeout(() => loadMetrics(true), 500); }, { capture: true });
   </script>
+
+  <!-- ===== Disclaimer Modal (初回同意) ===== -->
+  <div id="disclaimerModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:1rem">
+    <div class="th-bg-1 border" style="border-color:var(--border);max-width:560px;width:100%;padding:2rem 2rem 1.5rem">
+      <p class="text-[10px] uppercase tracking-[0.2em] th-text-m mb-2" style="font-family:'IBM Plex Mono','Courier New',monospace" id="disc-label">00 / LEGAL NOTICE</p>
+      <h2 class="text-xl font-bold th-text mb-4" style="font-family:'Bebas Neue',sans-serif;letter-spacing:0.05em" id="disc-title">ご利用前にご確認ください</h2>
+      <div class="text-xs th-text-m space-y-3 mb-6" style="line-height:1.7" id="disc-body">
+        <p>本サービスは財務データの<strong class="th-text-s">情報提供のみ</strong>を目的としており、投資助言・投資勧誘・特定の金融商品の推奨ではありません。</p>
+        <p>財務データはyfinance・SEC EDGAR・IR BANK 等の第三者サービスから取得しており、<strong class="th-text-s">データの正確性・完全性・最新性を保証しません</strong>。</p>
+        <p>投資判断はすべて<strong class="th-text-s">ご自身の責任</strong>において行ってください。本サービスの利用によって生じた損害について、運営者は一切の責任を負いません。</p>
+        <p>続行することで上記の免責事項に同意したものとみなします。</p>
+      </div>
+      <div class="flex gap-3">
+        <button id="disclaimerAgreeBtn" class="px-6 py-2 text-[11px] font-bold uppercase tracking-wider transition-all" style="background:var(--accent-v0);color:#fff;border:none;border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace;cursor:pointer">同意して続ける</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Footer ===== -->
+  <footer class="th-bg-1 border-t" style="border-color:var(--border);margin-top:4rem">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-2">
+      <p class="text-[10px] th-text-m" style="font-family:'IBM Plex Mono','Courier New',monospace" id="footer-disc">
+        本サービスは情報提供のみを目的としており、投資助言ではありません。データの正確性を保証しません。投資判断は自己責任で。
+      </p>
+      <button onclick="document.getElementById('disclaimerModal').style.display='flex'" class="text-[10px] th-text-m hover:underline cursor-pointer" style="background:none;border:none;font-family:'IBM Plex Mono','Courier New',monospace" id="footer-tos">利用規約を確認</button>
+    </div>
+  </footer>
+
+  <script>
+    // ── Disclaimer ──────────────────────────────────────────────────────────
+    (function() {
+      const modal = document.getElementById('disclaimerModal');
+      const agreeBtn = document.getElementById('disclaimerAgreeBtn');
+      const KEY = 'tos_agreed_v1';
+
+      function applyLang(lang) {
+        const ja = lang !== 'en';
+        document.getElementById('disc-label').textContent = '00 / LEGAL NOTICE';
+        document.getElementById('disc-title').textContent = ja ? 'ご利用前にご確認ください' : 'Terms of Use & Disclaimer';
+        document.getElementById('disc-body').innerHTML = ja
+          ? `<p>本サービスは財務データの<strong class="th-text-s">情報提供のみ</strong>を目的としており、投資助言・投資勧誘・特定の金融商品の推奨ではありません。</p>
+             <p>財務データはyfinance・SEC EDGAR・IR BANK 等の第三者サービスから取得しており、<strong class="th-text-s">データの正確性・完全性・最新性を保証しません</strong>。</p>
+             <p>投資判断はすべて<strong class="th-text-s">ご自身の責任</strong>において行ってください。本サービスの利用によって生じた損害について、運営者は一切の責任を負いません。</p>
+             <p>続行することで上記の免責事項に同意したものとみなします。</p>`
+          : `<p>This service is for <strong class="th-text-s">informational purposes only</strong> and does not constitute investment advice, solicitation, or recommendation of any financial product.</p>
+             <p>Financial data is sourced from third-party services (yfinance, SEC EDGAR, IR BANK, etc.). We make <strong class="th-text-s">no warranty as to accuracy, completeness, or timeliness</strong> of the data.</p>
+             <p>All investment decisions are made <strong class="th-text-s">at your own risk</strong>. The operator bears no liability for any loss arising from use of this service.</p>
+             <p>By continuing, you agree to these terms.</p>`;
+        agreeBtn.textContent = ja ? '同意して続ける' : 'Agree & Continue';
+        document.getElementById('footer-disc').textContent = ja
+          ? '本サービスは情報提供のみを目的としており、投資助言ではありません。データの正確性を保証しません。投資判断は自己責任で。'
+          : 'For informational purposes only. Not investment advice. Data accuracy not guaranteed. Invest at your own risk.';
+        document.getElementById('footer-tos').textContent = ja ? '利用規約を確認' : 'View Terms';
+      }
+
+      if (!localStorage.getItem(KEY)) {
+        modal.style.display = 'flex';
+        const lang = document.documentElement.lang || 'ja';
+        applyLang(lang);
+      } else {
+        modal.style.display = 'none';
+      }
+
+      agreeBtn.addEventListener('click', function() {
+        localStorage.setItem(KEY, '1');
+        modal.style.display = 'none';
+      });
+
+      // 言語切替と連動
+      const origLangBtn = document.getElementById('langToggle');
+      if (origLangBtn) {
+        origLangBtn.addEventListener('click', function() {
+          setTimeout(function() {
+            const lang = document.documentElement.lang || 'en';
+            applyLang(lang);
+          }, 50);
+        });
+      }
+    })();
+  </script>
+
 </body>
 </html>
