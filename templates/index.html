@@ -2482,69 +2482,101 @@
           if (!isBar && !isLine) return;
           const ctx = chart.ctx;
           ctx.save();
-          chart.data.datasets.forEach((ds, dsIdx) => {
-            const meta = chart.getDatasetMeta(dsIdx);
-            if (!meta || meta.hidden) return;
-            const data = ds.data || [];
-            const yScale = chart.scales.y;
-            if (!yScale) return;
-            const yZero = yScale.getPixelForValue(0);
-            const yTop = yScale.top;
-            let color = ds.borderColor;
-            if (!color || color === 'transparent') {
-              const bg = typeof ds.backgroundColor === 'string' ? ds.backgroundColor : '';
-              color = /^#[0-9a-fA-F]{6}/.test(bg) ? bg.slice(0, 7) : '#D4852A';
-            }
-            ctx.lineWidth = 1.5;
-            data.forEach((v, i) => {
-              const pt = meta.data[i];
-              if (!pt) return;
-              const isZero = v === 0;
-              const isMissing = v == null || (typeof v === 'number' && isNaN(v));
-              if (!isZero && !isMissing) return;
+          const yScale = chart.scales.y;
+          if (!yScale) { ctx.restore(); return; }
+          const yZero = yScale.getPixelForValue(0);
+          const yTop = yScale.top;
+          const datasets = chart.data.datasets;
+          const n = (chart.data.labels || []).length;
 
-              if (isBar) {
-                const w = (pt.width || 20) * 0.85;
-                if (isMissing) {
-                  // 欠損: 薄い背景塗り + 点線枠 + 水平ティック + "N/A"テキスト
-                  const slotH = Math.max(24, (yZero - yTop) * 0.25);
-                  const slotTop = yZero - slotH;
-                  // 薄い背景
-                  ctx.fillStyle = 'rgba(255,255,255,0.04)';
-                  ctx.fillRect(pt.x - w / 2, yTop, w, yZero - yTop);
-                  // 点線枠（上部のみ）
-                  ctx.strokeStyle = color + '55';
-                  ctx.setLineDash([3, 3]);
-                  ctx.lineWidth = 1;
-                  ctx.strokeRect(pt.x - w / 2, slotTop, w, slotH);
-                  ctx.setLineDash([]);
-                  // 水平ティック（y=0）
-                  ctx.strokeStyle = color + '99';
-                  ctx.lineWidth = 1.5;
-                  ctx.setLineDash([4, 3]);
-                  ctx.beginPath();
-                  ctx.moveTo(pt.x - w / 2, yZero);
-                  ctx.lineTo(pt.x + w / 2, yZero);
-                  ctx.stroke();
-                  ctx.setLineDash([]);
-                  // "N/A"テキスト
-                  ctx.fillStyle = color + '88';
-                  ctx.font = 'bold 8px IBM Plex Mono, monospace';
-                  ctx.textAlign = 'center';
-                  ctx.textBaseline = 'middle';
-                  ctx.fillText('N/A', pt.x, slotTop + slotH / 2);
-                } else {
-                  // ゼロ: 実線水平ティック
-                  ctx.beginPath();
-                  ctx.strokeStyle = color;
-                  ctx.lineWidth = 2;
-                  ctx.setLineDash([]);
-                  ctx.moveTo(pt.x - w / 2, yZero);
-                  ctx.lineTo(pt.x + w / 2, yZero);
-                  ctx.stroke();
+          function dsColor(ds) {
+            let c = ds.borderColor;
+            if (!c || c === 'transparent') {
+              const bg = typeof ds.backgroundColor === 'string' ? ds.backgroundColor : '';
+              c = /^#[0-9a-fA-F]{6}/.test(bg) ? bg.slice(0, 7) : '#D4852A';
+            }
+            return (c && c !== 'transparent') ? c : '#D4852A';
+          }
+
+          if (isBar) {
+            // バーチャート: 年（ラベル）単位で処理 — multi-datasetでも1つのN/Aマーカーを中央に描画
+            for (let i = 0; i < n; i++) {
+              let allSpecial = true, anyMissing = false, anyZero = false;
+              for (let di = 0; di < datasets.length; di++) {
+                const meta = chart.getDatasetMeta(di);
+                if (!meta || meta.hidden) continue;
+                const v = (datasets[di].data || [])[i];
+                const miss = v == null || (typeof v === 'number' && isNaN(v));
+                if (!miss && v !== 0) { allSpecial = false; break; }
+                if (miss) anyMissing = true; else anyZero = true;
+              }
+              if (!allSpecial) continue;
+
+              // グループ中心 x とグループ幅を全データセットのバー位置から計算
+              let xSum = 0, xCnt = 0, xMin = Infinity, xMax = -Infinity, wSample = 20;
+              for (let di = 0; di < datasets.length; di++) {
+                const meta = chart.getDatasetMeta(di);
+                if (!meta || meta.hidden) continue;
+                const pt = meta.data[i];
+                if (pt) {
+                  xSum += pt.x; xCnt++;
+                  xMin = Math.min(xMin, pt.x); xMax = Math.max(xMax, pt.x);
+                  if (pt.width) wSample = pt.width;
                 }
+              }
+              if (xCnt === 0) continue;
+              const xCenter = xSum / xCnt;
+              const w = (xMax - xMin + wSample) * 0.85;
+              const color = dsColor(datasets[0]);
+              ctx.lineWidth = 1.5;
+
+              if (anyMissing) {
+                const slotH = Math.max(24, (yZero - yTop) * 0.25);
+                const slotTop = yZero - slotH;
+                ctx.fillStyle = 'rgba(255,255,255,0.04)';
+                ctx.fillRect(xCenter - w / 2, yTop, w, yZero - yTop);
+                ctx.strokeStyle = color + '55';
+                ctx.setLineDash([3, 3]);
+                ctx.lineWidth = 1;
+                ctx.strokeRect(xCenter - w / 2, slotTop, w, slotH);
+                ctx.setLineDash([]);
+                ctx.strokeStyle = color + '99';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 3]);
+                ctx.beginPath();
+                ctx.moveTo(xCenter - w / 2, yZero);
+                ctx.lineTo(xCenter + w / 2, yZero);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = color + '88';
+                ctx.font = 'bold 8px IBM Plex Mono, monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('N/A', xCenter, slotTop + slotH / 2);
               } else {
-                // 折れ線: ゼロ=縦ティック、欠損=×マーカー
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.setLineDash([]);
+                ctx.moveTo(xCenter - w / 2, yZero);
+                ctx.lineTo(xCenter + w / 2, yZero);
+                ctx.stroke();
+              }
+            }
+          } else {
+            // 折れ線チャート: データセット単位で欠損点に×マーカー + N/A
+            datasets.forEach((ds, dsIdx) => {
+              const meta = chart.getDatasetMeta(dsIdx);
+              if (!meta || meta.hidden) return;
+              const data = ds.data || [];
+              const color = dsColor(ds);
+              data.forEach((v, i) => {
+                const pt = meta.data[i];
+                if (!pt) return;
+                const isMissing = v == null || (typeof v === 'number' && isNaN(v));
+                const isZero = v === 0;
+                if (!isMissing && !isZero) return;
+                ctx.lineWidth = 1.5;
                 if (isMissing) {
                   const sz = 5;
                   ctx.strokeStyle = color + '99';
@@ -2556,7 +2588,6 @@
                   ctx.moveTo(pt.x + sz, yZero - sz);
                   ctx.lineTo(pt.x - sz, yZero + sz);
                   ctx.stroke();
-                  // "N/A"テキスト（×の上）
                   ctx.fillStyle = color + '88';
                   ctx.font = '7px IBM Plex Mono, monospace';
                   ctx.textAlign = 'center';
@@ -2571,9 +2602,9 @@
                   ctx.lineTo(pt.x, yZero + 7);
                   ctx.stroke();
                 }
-              }
+              });
             });
-          });
+          }
           ctx.restore();
         },
       };
