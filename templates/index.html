@@ -337,7 +337,10 @@
   <div id="chartModal" class="chart-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="chartModalTitle">
     <div class="chart-modal">
       <div class="flex items-center justify-between mb-4">
-        <h3 id="chartModalTitle" class="text-sm font-bold th-text-s"></h3>
+        <div>
+          <h3 id="chartModalTitle" class="text-sm font-bold th-text-s"></h3>
+          <p id="chartModalDataNote" class="text-[10px] th-text-m mt-0.5" style="display:none"></p>
+        </div>
         <div class="flex items-center gap-3">
           <!-- Chart type toggle -->
           <div class="flex" style="border:1px solid var(--border-s)">
@@ -664,8 +667,8 @@
         <div class="flex items-center justify-between mb-6">
           <h3 class="v0-section-label" data-i18n="Time Series">Time Series</h3>
           <div class="flex gap-2">
-            <button id="chartTypeLineBtn" class="chart-type-btn px-4 py-2 text-[10px] font-bold border transition-all" style="border-color:var(--border-s);border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace" data-chart-type="line" aria-pressed="true" data-i18n="Line">Line</button>
-            <button id="chartTypeBarBtn" class="chart-type-btn px-4 py-2 text-[10px] font-bold border transition-all" style="border-color:var(--border-s);border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace" data-chart-type="bar" aria-pressed="false" data-i18n="Bar">Bar</button>
+            <button id="chartTypeLineBtn" class="chart-type-btn px-4 py-2 text-[10px] font-bold border transition-all" style="border-color:var(--border-s);border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace" data-chart-type="line" aria-pressed="false" data-i18n="Line">Line</button>
+            <button id="chartTypeBarBtn" class="chart-type-btn px-4 py-2 text-[10px] font-bold border transition-all" style="border-color:var(--border-s);border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace" data-chart-type="bar" aria-pressed="true" data-i18n="Bar">Bar</button>
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -986,6 +989,8 @@
       'データ不足': { ja: 'データ不足', en: 'Insufficient Data' },
       '時系列データなし': { ja: '時系列データなし', en: 'No Time Series Data' },
       'PBR変化：データ不足': { ja: 'PBR変化：データ不足', en: 'PBR Change: Insufficient Data' },
+      '連続低下（3期）': { ja: '連続低下（3期）', en: '3-Period Consecutive Decline' },
+      '3期連続マイナス': { ja: '3期連続マイナス', en: '3-Period Consecutive Negative' },
       // Evaluation criteria
       '評価基準': { ja: '評価基準', en: 'Evaluation Criteria' },
       '基準値:': { ja: '基準値:', en: 'Benchmark:' },
@@ -1736,9 +1741,9 @@
           }
         }
       }
-      // 欠損理由表示（評価が"未入力"の場合）
+      // 欠損理由表示
       let missingHtml = '';
-      if ((grade === '未入力' || grade === 'N/A') && missingReason) {
+      if (missingReason) {
         missingHtml = `<div class="mt-1"><span class="text-[10px] px-2 py-0.5 rounded-full" style="background:rgba(156,163,175,0.15);color:#9ca3af">${missingReason}</span></div>`;
       }
       // 評価軸（evaluation criteria）— "?" ボタン：安定キーで判定
@@ -1891,8 +1896,8 @@
       $('growthItems').innerHTML = [
         makeItemCard(t('売上高推移'), qRev['評価'], qRev['最新値']!==undefined?(qRev['data_warning']?'⚠️ ':'')+smartFormat(qRev['最新値']):'', fmt5Y(qRev['5年変化率'],1,'%'), 'revenue', b1['基準'], qRev['欠損理由']),
         makeItemCard(t('EPS推移'), qEps['評価'], qEps['最新値']!==undefined?currentCurrencySymbol+fmtNum(qEps['最新値'],1):'', fmt5Y(qEps['5年変化率'],1,'%'), 'eps', b4['基準'], qEps['欠損理由']),
-        makeItemCard(t('EBITDA Margin'), b2['判定'], fmtNum(b2['実績値'],1,'%'), fmt5Y((q['EBITDAマージン']||{})['5年変化pt'],1,'pt'), 'ebitda', b2['基準']),
-        makeItemCard(t('営業利益率'), b3['判定'], typeof b3['状況']==='number'?(b3['data_warning']?'⚠️ ':'')+fmtNum(b3['状況'],1,'%'):(b3['状況']||'—'), fmt5Y((q['営業利益率Q']||{})['5年変化pt'],1,'pt'), 'op_margin', b3['基準']),
+        makeItemCard(t('EBITDA Margin'), b2['判定'] || '未入力', b2['実績値'] != null ? fmtNum(b2['実績値'],1,'%') : '—', fmt5Y((q['EBITDAマージン']||{})['5年変化pt'],1,'pt'), 'ebitda', b2['基準'], b2['実績値'] == null ? (currentLang==='ja'?'EBITDAデータ未取得':'EBITDA data unavailable') : undefined),
+        makeItemCard(t('営業利益率'), b3['判定'], typeof b3['状況']==='number'?(b3['data_warning']?'⚠️ ':'')+fmtNum(b3['状況'],1,'%'):(typeof b3['状況']==='string'?t(b3['状況']):'—'), fmt5Y((q['営業利益率Q']||{})['5年変化pt'],1,'pt'), 'op_margin', b3['基準']),
       ].join('');
 
       // Valuation & Risk (from screening C + quantitative risk)
@@ -2136,20 +2141,26 @@
         <!-- ===== PBR = ROE × PER (top level) ===== -->
         <div class="text-center mb-6">
           <p class="v0-section-label mb-2">${t('PBR Decomposition')}</p>
+          ${roeVal !== null && roeVal < 0 ? `
+          <div class="inline-block px-14 py-6 th-bg-2 border-2" style="border-color:#4b5563;border-radius:0">
+            <p class="text-[10px] uppercase tracking-[0.2em] th-text-m mb-1" style="font-family:'IBM Plex Mono','Courier New',monospace">PBR</p>
+            <p class="text-4xl font-bold tabular-nums" style="color:#4b5563;font-family:'IBM Plex Mono','Courier New',monospace">N/A</p>
+            <p class="text-xs mt-2 th-text-m">${currentLang==='ja'?'分解不成立（ROE < 0）':'Decomposition N/A (ROE < 0)'}</p>
+          </div>` : `
           <div class="inline-block px-14 py-6 th-bg-2 border-2" style="border-color:var(--brand);border-radius:0">
             <p class="text-[10px] uppercase tracking-[0.2em] th-text-m mb-1" style="font-family:'IBM Plex Mono','Courier New',monospace">PBR</p>
             <p class="text-5xl font-bold tabular-nums" style="color:var(--brand);font-family:'IBM Plex Mono','Courier New',monospace">${fmtNum(pbrVal,2)}<span class="text-2xl th-text-m">x</span></p>
             <p class="text-xs mt-2">${(()=>{const _j=pbrData['判定'];const _l=_j==='◎'?t('割安'):_j==='○'?t('適正水準'):_j==='▲'?t('やや割高'):_j==='×'?t('割高'):null;return _l?`<span style="color:${gradeColor(_j)}">${_l}</span>`:'<span class="th-text-m">—</span>';})()}</p>
             <p class="text-[11px] th-text-m mt-1">${t('5Y Change:')} <span class="${pbrChg>0?'text-green-400':pbrChg<0?'text-red-400':'th-text-m'}">${pbrChg!==null?((pbrChg>0?'+':'')+fmtNum(pbrChg,2)+'x'):'—'}</span></p>
             ${benchBadge('pbr', null, 'x')}
-          </div>
+          </div>`}
         </div>
         <div class="flex justify-center items-center gap-3 mb-3 text-sm th-text-m">
-          <span class="px-4 py-2 th-bg-2 border font-bold text-xs tracking-wider" style="border-color:var(--border);border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace">PBR <strong class="th-text">${fmtNum(pbrVal,2)}x</strong></span>
+          <span class="px-4 py-2 th-bg-2 border font-bold text-xs tracking-wider" style="border-color:var(--border);border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace">PBR <strong class="${roeVal !== null && roeVal < 0 ? 'text-gray-500' : 'th-text'}">${roeVal !== null && roeVal < 0 ? 'N/A' : fmtNum(pbrVal,2,'x')}</strong></span>
           <span class="text-lg">=</span>
-          <span class="px-4 py-2 th-bg-2 border font-bold text-xs tracking-wider cursor-pointer hover:border-brand/50 transition-all" style="border-color:var(--border);border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace" onclick="showItemChart('roe','ROE')">ROE <strong class="th-text">${fmtNum(roeVal,1)}%</strong></span>
+          <span class="px-4 py-2 th-bg-2 border font-bold text-xs tracking-wider cursor-pointer hover:border-brand/50 transition-all" style="border-color:var(--border);border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace" onclick="showItemChart('roe','ROE')">ROE <strong class="th-text">${fmtNum(roeVal,1,'%')}</strong></span>
           <span class="text-lg">&times;</span>
-          <span class="px-4 py-2 th-bg-2 border font-bold text-xs tracking-wider cursor-pointer hover:border-brand/50 transition-all" style="border-color:var(--border);border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace" onclick="showItemChart('pe_ratio','PER')">PER <strong class="th-text">${fmtNum(perVal,1)}x</strong></span>
+          <span class="px-4 py-2 th-bg-2 border font-bold text-xs tracking-wider cursor-pointer hover:border-brand/50 transition-all" style="border-color:var(--border);border-radius:0;font-family:'IBM Plex Mono','Courier New',monospace" onclick="showItemChart('pe_ratio','PER')">PER <strong class="${perVal == null ? 'th-text-m' : 'th-text'}">${fmtNum(perVal,1,'x')}</strong></span>
         </div>
         ${roeVal !== null && roeVal < 0 ? `
         <div class="flex items-center justify-center gap-2 mb-8 px-4 py-3 border border-yellow-500/30 max-w-xl mx-auto" style="background:rgba(234,179,8,0.07);border-radius:0">
@@ -2189,7 +2200,7 @@
             </div>
             <p class="text-[10px] th-text-m mb-1">${t('roe-desc')}</p>
             <div class="mb-1">${benchBadge(benchmarkRegion === 'japan' ? 'roe_japan' : 'roe_global', 100, '%')}</div>
-            <p class="text-[11px] th-text-m mb-3">${t('5Y Change:')} ${fmtNum(roe['5年変化pt'],1)}pt</p>
+            <p class="text-[11px] th-text-m mb-3">${t('5Y Change:')} ${fmtNum(roe['5年変化pt'],1,'pt')}</p>
             <div id="roeChartContainer">
               <canvas id="roetreeROEChart" style="max-height:140px"></canvas>
             </div>
@@ -2200,13 +2211,13 @@
         <div class="mb-6">
           <p class="v0-section-label mb-2 text-center">${t('ROE DuPont Decomposition')}</p>
           <div class="flex flex-wrap justify-center gap-x-4 gap-y-1 text-[11px] th-text-m mb-6">
-            <span>ROE <strong class="th-text">${fmtNum(roeVal,1)}%</strong></span>
+            <span>ROE <strong class="th-text">${fmtNum(roeVal,1,'%')}</strong></span>
             <span>=</span>
-            <span>${t('Net Margin')} <strong class="th-text">${fmtNum(npm['現在値'],1)}%</strong></span>
+            <span>${t('Net Margin')} <strong class="th-text">${fmtNum(npm['現在値'],1,'%')}</strong></span>
             <span>&times;</span>
-            <span>${t('Asset Turnover')} <strong class="th-text">${fmtNum(at['現在値'],2)}x</strong></span>
+            <span>${t('Asset Turnover')} <strong class="th-text">${fmtNum(at['現在値'],2,'x')}</strong></span>
             <span>&times;</span>
-            <span>${t('Leverage')} <strong class="th-text">${fmtNum(em['現在値'],2)}x</strong></span>
+            <span>${t('Leverage')} <strong class="th-text">${fmtNum(em['現在値'],2,'x')}</strong></span>
           </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -2215,7 +2226,7 @@
             <p class="text-2xl font-bold tabular-nums mb-1" style="font-family:'IBM Plex Mono','Courier New',monospace">${fmtNum(npm['現在値'],1)}<span class="text-sm th-text-m">%</span></p>
             <p class="text-[10px] th-text-m mb-1">${t('Net Margin')} = ${t('Net Income')} / ${t('Revenue')}</p>
             ${benchBadge('net_margin', 100, '%')}
-            <p class="text-[11px] th-text-m mb-3">${t('5Y Change:')} ${fmtNum(npm['5年変化pt'],1)}pt</p>
+            <p class="text-[11px] th-text-m mb-3">${t('5Y Change:')} ${fmtNum(npm['5年変化pt'],1,'pt')}</p>
             <canvas id="dupontNPMChart" style="max-height:120px"></canvas>
             <div class="mt-4 ml-2 pl-3 border-l border-blue-500/20">
               <p class="text-[10px] th-text-m mb-2">&#9492; ${t('breakdown-npm')}</p>
@@ -2280,8 +2291,8 @@
       // Render mini PER/ROE charts in PBR Decomposition
       requestAnimationFrame(() => {
         const ts = lastTimeseries || {};
-        const dates = (ts.dates || []).slice().reverse();
-        const latestYear = dates.length > 0 ? dates[dates.length - 1] : null;
+        const allDates = (ts.dates || []).slice().reverse();
+        const latestYear = allDates.length > 0 ? allDates[allDates.length - 1] : null;
 
         const cs = getComputedStyle(document.documentElement);
         const chartText = cs.getPropertyValue('--chart-text').trim();
@@ -2296,6 +2307,17 @@
             },
           },
         });
+
+        // null年を除去して有効データのみ返すヘルパー
+        function filterNulls(labels, values) {
+          const fl = [], fv = [];
+          labels.forEach((l, i) => { if (values[i] != null) { fl.push(l); fv.push(values[i]); } });
+          return { labels: fl, values: fv };
+        }
+        function dataNote(total, valid) {
+          if (valid >= total) return '';
+          return currentLang === 'ja' ? `${valid}/${total}年分データあり` : `${valid}/${total} years data`;
+        }
 
         // PER chart
         const perCanvas = document.getElementById('roetreePERChart');
@@ -2313,9 +2335,16 @@
           if (perArr.length > 0 && perArr[perArr.length - 1] == null && trailingPE != null) {
             perArr[perArr.length - 1] = trailingPE;
           }
-          new Chart(perCanvas, { ...miniOpts('#D4852A', metricFmt('pe_ratio')), data: {
-            labels: dates, datasets: [{ data: perArr, backgroundColor: '#D4852ACC', borderColor: 'transparent', borderWidth: 0, borderRadius: 0 }]
-          }});
+          const { labels: perL, values: perV } = filterNulls(allDates, perArr);
+          if (perL.length === 0) {
+            perChartContainer.innerHTML = `<div class="flex items-center justify-center gap-2 p-3 border border-yellow-500/20 bg-yellow-500/5" style="border-radius:0"><span class="text-yellow-400">⚠</span><p class="text-[10px] th-text-m">${t('時系列データなし')}</p></div>`;
+          } else {
+            const note = dataNote(allDates.length, perL.length);
+            if (note && perChartContainer) perChartContainer.insertAdjacentHTML('beforeend', `<p class="text-[9px] th-text-m mt-1 text-right">${note}</p>`);
+            new Chart(perCanvas, { ...miniOpts('#D4852A', metricFmt('pe_ratio')), data: {
+              labels: perL, datasets: [{ data: perV, backgroundColor: '#D4852ACC', borderColor: 'transparent', borderWidth: 0, borderRadius: 0 }]
+            }});
+          }
         } else if (perChartContainer) {
           perChartContainer.innerHTML = `<div class="flex items-center justify-center gap-2 p-3 border border-yellow-500/20 bg-yellow-500/5" style="border-radius:0"><span class="text-yellow-400">⚠</span><p class="text-[10px] th-text-m">${t('時系列データなし')}</p></div>`;
         }
@@ -2330,12 +2359,20 @@
         }
 
         if (roeCanvas && ts.roe && ts.roe.length > 0) {
-          new Chart(roeCanvas, { ...miniOpts('#D4852A', metricFmt('roe')), data: {
-            labels: dates, datasets: [{ data: ts.roe.slice().reverse(), backgroundColor: '#D4852ACC', borderColor: 'transparent', borderWidth: 0, borderRadius: 0 }]
-          }});
+          const { labels: roeL, values: roeV } = filterNulls(allDates, ts.roe.slice().reverse());
+          if (roeL.length === 0) {
+            roeChartContainer.innerHTML = `<div class="flex items-center justify-center gap-2 p-3 border border-yellow-500/20 bg-yellow-500/5" style="border-radius:0"><span class="text-yellow-400">⚠</span><p class="text-[10px] th-text-m">${t('時系列データなし')}</p></div>`;
+          } else {
+            const note = dataNote(allDates.length, roeL.length);
+            if (note && roeChartContainer) roeChartContainer.insertAdjacentHTML('beforeend', `<p class="text-[9px] th-text-m mt-1 text-right">${note}</p>`);
+            new Chart(roeCanvas, { ...miniOpts('#D4852A', metricFmt('roe')), data: {
+              labels: roeL, datasets: [{ data: roeV, backgroundColor: '#D4852ACC', borderColor: 'transparent', borderWidth: 0, borderRadius: 0 }]
+            }});
+          }
         } else if (roeChartContainer) {
           roeChartContainer.innerHTML = `<div class="flex items-center justify-center gap-2 p-3 border border-yellow-500/20 bg-yellow-500/5" style="border-radius:0"><span class="text-yellow-400">⚠</span><p class="text-[10px] th-text-m">${t('時系列データなし')}</p></div>`;
         }
+
         // DuPont decomposition charts
         const dupontCharts = [
           { id: 'dupontNPMChart', key: 'net_margin', color: '#D4852A' },
@@ -2344,10 +2381,18 @@
         ];
         dupontCharts.forEach(({ id, key, color }) => {
           const canvas = document.getElementById(id);
-          if (canvas && ts[key]) {
-            new Chart(canvas, { ...miniOpts(color, metricFmt(key)), data: {
-              labels: dates, datasets: [{ data: ts[key].slice().reverse(), backgroundColor: color + 'CC', borderColor: 'transparent', borderWidth: 0, borderRadius: 0 }]
-            }});
+          if (!canvas) return;
+          if (ts[key] && ts[key].length > 0) {
+            const { labels: dl, values: dv } = filterNulls(allDates, ts[key].slice().reverse());
+            if (dl.length === 0) {
+              canvas.parentElement.innerHTML = `<div class="flex items-center justify-center gap-2 p-3 border border-yellow-500/20 bg-yellow-500/5" style="border-radius:0"><span class="text-yellow-400">⚠</span><p class="text-[10px] th-text-m">${t('時系列データなし')}</p></div>`;
+            } else {
+              new Chart(canvas, { ...miniOpts(color, metricFmt(key)), data: {
+                labels: dl, datasets: [{ data: dv, backgroundColor: color + 'CC', borderColor: 'transparent', borderWidth: 0, borderRadius: 0 }]
+              }});
+            }
+          } else {
+            canvas.parentElement.innerHTML = `<div class="flex items-center justify-center gap-2 p-3 border border-yellow-500/20 bg-yellow-500/5" style="border-radius:0"><span class="text-yellow-400">⚠</span><p class="text-[10px] th-text-m">${t('時系列データなし')}</p></div>`;
           }
         });
       });
@@ -2393,8 +2438,8 @@
     }
 
     // Metric-aware formatter — %/ratio keys bypass JPY scaling in smartFormat
-    const _PCT_KEYS  = new Set(['roe','roa','op_margin','ebitda_margin','net_margin','equity_ratio','roic','dividend_yield','payout_ratio','interest_burden','nonop_burden','tax_burden']);
-    const _RATIO_KEYS = new Set(['asset_turnover','financial_leverage','pe_ratio','pb_ratio','debt_fcf','debt_ebitda','nd_ebitda','quick_ratio','current_ratio']);
+    const _PCT_KEYS  = new Set(['roe','roa','op_margin','ebitda_margin','net_margin','equity_ratio','roic','dividend_yield','payout_ratio','interest_burden','nonop_burden','tax_burden','quick_ratio','current_ratio']);
+    const _RATIO_KEYS = new Set(['asset_turnover','financial_leverage','pe_ratio','pb_ratio','debt_fcf','debt_ebitda','nd_ebitda']);
     function metricFmt(key) {
       if (_PCT_KEYS.has(key))   return v => (v != null && !isNaN(v)) ? v.toFixed(1) + '%' : '';
       if (_RATIO_KEYS.has(key)) return v => (v != null && !isNaN(v)) ? v.toFixed(2) + 'x' : '';
@@ -2450,65 +2495,11 @@
     }
 
     function renderCharts(ts) {
-      Object.values(charts).forEach(c => c.destroy()); charts = {};
-      const revArr = a => Array.isArray(a) ? a.slice().reverse() : a;
-      const dates = revArr(ts.dates || []);
-      const tsR = {};
-      for (const k in ts) { tsR[k] = revArr(ts[k]); }
-      const cs = getComputedStyle(document.documentElement);
-      const chartText = cs.getPropertyValue('--chart-text').trim();
-      const chartGrid = cs.getPropertyValue('--chart-grid').trim();
-      const chartGridY = cs.getPropertyValue('--chart-grid-y').trim();
-      Chart.defaults.color = chartText;
-      Chart.defaults.borderColor = chartGrid;
-
-      const opts = {
-        responsive: true, maintainAspectRatio: true,
-        plugins: {
-          legend: { display: true, position: 'bottom', labels: { boxWidth: 8, padding: 16, font: { size: 10, family: 'Inter' }, color: chartText } },
-          tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + smartFormat(ctx.parsed.y) } },
-        },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 9 }, color: chartText, maxRotation: 45 } },
-          y: { grid: { color: chartGridY }, ticks: { font: { size: 9 }, color: chartText, callback: v => smartFormat(v) } },
-        },
-        elements: { point: { radius: 2, hoverRadius: 4 }, line: { tension: 0, borderWidth: 2 } },
-      };
-
-      // % axis opts (for ROE/ROA)
-      const pctOpts = JSON.parse(JSON.stringify(opts));
-      pctOpts.scales.y.ticks = { font: { size: 9 }, color: chartText, callback: v => v.toFixed(1) + '%' };
-      pctOpts.plugins = { ...opts.plugins, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y != null ? ctx.parsed.y.toFixed(2) + '%' : '') } } };
-      pctOpts.elements = opts.elements;
-
-      function areaLine(id, label, data, color) {
-        charts[id] = new Chart($(id), { type: 'line', plugins: [makeZeroPlugin()], data: { labels: dates, datasets: [{
-          label, data, borderColor: color, backgroundColor: color + '18', fill: true, borderWidth: 2, pointRadius: 2, tension: 0,
-        }] }, options: opts });
-      }
-      function multiLine(id, datasets, useOpts) {
-        charts[id] = new Chart($(id), { type: 'line', plugins: [makeZeroPlugin()], data: { labels: dates, datasets }, options: useOpts || opts });
-      }
-
-      areaLine('chartRevenue', t('Revenue'), tsR.revenue, '#D4852A');
-      areaLine('chartNetIncome', t('Net Income'), tsR.net_income, '#D4852A');
-      areaLine('chartFCF', 'FCF', tsR.fcf, '#D4852A');
-      areaLine('chartEPS', 'EPS', tsR.eps, '#D4852A');
-
-      multiLine('chartROE', [
-        { label: 'ROE (%)', data: tsR.roe, borderColor: '#D4852A', backgroundColor: 'rgba(212,133,42,0.08)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
-        { label: 'ROA (%)', data: tsR.roa, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
-      ], pctOpts);
-
-      multiLine('chartBS', [
-        { label: t('Total Assets'), data: tsR.total_assets, borderColor: '#D4852A', backgroundColor: 'rgba(212,133,42,0.08)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
-        { label: t('Equity'),       data: tsR.total_equity, borderColor: '#22c55e',  backgroundColor: 'rgba(34,197,94,0.08)',   fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
-        { label: t('Debt'),         data: tsR.total_debt,   borderColor: '#ef4444',  backgroundColor: 'rgba(239,68,68,0.08)',   fill: true, borderWidth: 2, pointRadius: 2, tension: 0 },
-      ]);
       lastTimeseries = ts;
+      renderChartsWithType(ts, currentChartType);
     }
 
-    let currentChartType = 'line';
+    let currentChartType = 'bar';
     const chartTypeButtons = document.querySelectorAll('.chart-type-btn');
     chartTypeButtons.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -2526,7 +2517,8 @@
         if (lastTimeseries) renderChartsWithType(lastTimeseries, type);
       });
     });
-    chartTypeButtons[0].style.borderColor = 'var(--accent-v0)'; chartTypeButtons[0].style.color = 'var(--accent-v0)';
+    // Bar button is index 1 (Line=0, Bar=1) — highlight Bar as default
+    document.getElementById('chartTypeBarBtn').style.borderColor = 'var(--accent-v0)'; document.getElementById('chartTypeBarBtn').style.color = 'var(--accent-v0)';
 
     function renderChartsWithType(ts, chartType) {
       Object.values(charts).forEach(c => c.destroy()); charts = {};
@@ -3033,6 +3025,19 @@
       const cd = getChartData(key);
       if (!cd || !cd.data.length) return;
       if (modalChart) { modalChart.destroy(); modalChart = null; }
+      // データ欠損注記
+      const noteEl = $('chartModalDataNote');
+      if (noteEl) {
+        const hasNaN = cd.data.some(v => typeof v === 'number' && isNaN(v));
+        if (hasNaN) {
+          noteEl.textContent = currentLang === 'ja'
+            ? '欠損データは点線で表示'
+            : 'Missing data shown as dashed lines';
+          noteEl.style.display = '';
+        } else {
+          noteEl.style.display = 'none';
+        }
+      }
 
       const cs = getComputedStyle(document.documentElement);
       const chartText  = cs.getPropertyValue('--chart-text').trim();
@@ -3138,19 +3143,23 @@
 
       // 1) timeseries にキーがあれば全時系列を使う（最優先）
       if (ts[key] && Array.isArray(ts[key]) && ts[key].some(v => v !== null && v !== undefined)) {
-        const labels = dates.slice().reverse();
-        const data = ts[key].slice().reverse();
+        const allLabels = dates.slice().reverse();
+        const allData   = ts[key].slice().reverse();
         // 最新年が欠損していれば screening の現在値（trailing PER/PBR）で補完
-        if (data.length > 0 && data[data.length - 1] == null) {
+        if (allData.length > 0 && allData[allData.length - 1] == null) {
           const sc = (lastData || {}).screening || {};
           const fillMap = {
             pe_ratio: (sc['C-1_PER'] || {})['実績値'],
             pb_ratio: (sc['C-2_PBR'] || {})['実績値'],
           };
           const fill = fillMap[key];
-          if (fill != null) data[data.length - 1] = fill;
+          if (fill != null) allData[allData.length - 1] = fill;
         }
-        return { labels, data };
+        // null年をNaNのまま保持（グラフで点線として表示）
+        const labels = [], data = [];
+        allLabels.forEach((l, i) => { labels.push(l); data.push(allData[i] == null ? NaN : allData[i]); });
+        const totalYears = allLabels.length;
+        return { labels, data, totalYears };
       }
 
       // 2) raw_data に配列があればそれを使う（JSON mode — no Excel timeseries）
