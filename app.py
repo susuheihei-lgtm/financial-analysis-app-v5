@@ -310,6 +310,10 @@ def fetch_ticker():
                     '日本株は末尾に ".T"（例: 7203.T）、米国株はそのまま（例: AAPL）。'
                 )
             }), 400
+        if 'too many requests' in err_msg or 'rate limit' in err_msg or '429' in err_msg:
+            return jsonify({
+                'error': 'データ取得の上限に達しました（yfinanceレート制限）。1〜2分後に再試行してください。'
+            }), 429
         if 'timeout' in err_msg or 'connection' in err_msg:
             return jsonify({
                 'error': 'データ取得がタイムアウトしました。しばらく待ってから再試行してください。'

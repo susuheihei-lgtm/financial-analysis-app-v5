@@ -1303,9 +1303,12 @@
       if (!symbol) { tickerError.textContent = t('Please enter a ticker symbol'); tickerError.classList.remove('hidden'); return; }
       tickerError.classList.add('hidden');
       setTickerLoading(true);
+      const _ctrl = new AbortController();
+      const _timer = setTimeout(() => _ctrl.abort(), 90000);
       try {
         const body = { ticker: symbol, d1: '○', d2: '○', d3: '○', investor_profile: selectedInvestorProfile };
-        const res = await fetch('/api/fetch_ticker', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+        const res = await fetch('/api/fetch_ticker', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body), signal: _ctrl.signal });
+        if (!res.ok) throw new Error(currentLang === 'ja' ? `サーバーエラー (${res.status})` : `Server error (${res.status})`);
         const data = await res.json();
         if (data.error) {
           tickerError.textContent = data.error + t('ticker-error-suffix');
@@ -1314,8 +1317,16 @@
         }
         tickerError.classList.add('hidden');
         renderDashboard(data);
-      } catch (e) { tickerError.textContent = e.message; tickerError.classList.remove('hidden'); }
-      finally { setTickerLoading(false); }
+      } catch (e) {
+        const msg = e.name === 'AbortError'
+          ? (currentLang === 'ja' ? 'タイムアウト — データ取得に時間がかかりすぎました。再試行してください。' : 'Timeout — data fetch took too long. Please try again.')
+          : e.message;
+        tickerError.textContent = msg;
+        tickerError.classList.remove('hidden');
+      } finally {
+        clearTimeout(_timer);
+        setTickerLoading(false);
+      }
     });
 
     tickerInput.addEventListener('keydown', (e) => {
