@@ -77,6 +77,7 @@ _SEC_BALANCE_TAGS = {
     'intangibles_other': ['IntangibleAssetsNetExcludingGoodwill'],
     'long_term_debt': ['LongTermDebtNoncurrent', 'LongTermDebt'],
     'retained_earnings': ['RetainedEarningsAccumulatedDeficit'],
+    'shares_outstanding': ['CommonStockSharesOutstanding', 'CommonStockSharesIssued'],
 }
 _SEC_CASHFLOW_TAGS = {
     'ocf': [
@@ -1045,7 +1046,8 @@ def parse_yfinance(ticker_symbol):
             pass
 
     # ── PER/PBR 履歴（株価履歴×EPS/BPSで計算）────────────────────────────────
-    shares_out = _safe(info.get('sharesOutstanding') or info.get('impliedSharesOutstanding'))
+    # yfinanceのsharesOutstandingは現在値のみ。EDGAR年次データを年ごとに優先使用
+    _shares_out_yf = _safe(info.get('sharesOutstanding') or info.get('impliedSharesOutstanding'))
 
     per_ts = []
     pbr_ts = []
@@ -1058,9 +1060,11 @@ def parse_yfinance(ticker_symbol):
         else:
             per_ts.append(None)
         # PBR = 株価 / BPS (BPS = 純資産 / 発行済株式数)
+        # EDGAR年次株数を優先、なければyfinance現在値にフォールバック
+        shares_y = g('shares_outstanding', i) or _shares_out_yf
         eq_y = g('total_equity', i)
-        if price_y and eq_y and shares_out and shares_out > 0:
-            bps = eq_y / shares_out
+        if price_y and eq_y and shares_y and shares_y > 0:
+            bps = eq_y / shares_y
             if bps > 0:
                 pbr_ts.append(_safe(price_y / bps))
             else:
