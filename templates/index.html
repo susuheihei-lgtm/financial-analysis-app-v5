@@ -3643,10 +3643,10 @@
         document.getElementById('footer-tos').textContent = ja ? '利用規約を確認' : 'View Terms';
       }
 
+      const lang = document.documentElement.lang || 'ja';
+      applyLang(lang);
       if (!localStorage.getItem(KEY)) {
         modal.style.display = 'flex';
-        const lang = document.documentElement.lang || 'ja';
-        applyLang(lang);
       } else {
         modal.style.display = 'none';
       }

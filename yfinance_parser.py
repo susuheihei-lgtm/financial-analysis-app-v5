@@ -792,6 +792,18 @@ def parse_yfinance(ticker_symbol):
     def g_list(key):
         return all_data.get(key, [])
 
+    # ── 米国株: 10年ベースに統一（日本株はソース仕様のままとする）────────────
+    # EDINET/IR BANKを使わなかった場合（米国株 or yfinanceフォールバック）のみ延長
+    _TARGET_YEARS = 10
+    if (_irbank_data is None and _edinet_data is None
+            and dates and len(dates) < _TARGET_YEARS):
+        _oldest = int(dates[-1])
+        _missing = _TARGET_YEARS - len(dates)
+        dates = dates + [str(_oldest - i - 1) for i in range(_missing)]
+        for _k in list(all_data.keys()):
+            if isinstance(all_data[_k], list):
+                all_data[_k] = all_data[_k] + [None] * _missing
+
     n = len(dates)
 
     # ── 通貨・地域メタデータ（早期決定） ─────────────────────────────────────
