@@ -2682,16 +2682,19 @@
       pctOpts.plugins = { ...opts.plugins, tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y != null ? ctx.parsed.y.toFixed(2) + '%' : '') } } };
       pctOpts.elements = opts.elements;
 
+      function barColors(data, posColor) {
+        return (data || []).map(v => (v != null && v < 0) ? '#ef444499' : posColor + 'CC');
+      }
       function createChart(id, label, data, color) {
         const dataset = chartType === 'bar'
-          ? { label, data, backgroundColor: color + 'CC', borderColor: 'transparent', borderWidth: 0, borderRadius: 0 }
+          ? { label, data, backgroundColor: barColors(data, color), borderColor: 'transparent', borderWidth: 0, borderRadius: 0 }
           : { label, data, borderColor: color, backgroundColor: color + '18', fill: true, borderWidth: 2, pointRadius: 2, tension: 0 };
         charts[id] = new Chart($(id), { type: chartType, plugins: [makeZeroPlugin()], data: { labels: dates, datasets: [dataset] }, options: opts });
       }
       function multiChart(id, datasets, useOpts) {
         const newDatasets = datasets.map(ds =>
           chartType === 'bar'
-            ? { ...ds, backgroundColor: ds.borderColor + 'CC', borderColor: 'transparent', fill: false, borderWidth: 0, borderDash: undefined, pointRadius: 0, tension: undefined }
+            ? { ...ds, backgroundColor: barColors(ds.data, ds.borderColor.slice(0,7)), borderColor: 'transparent', fill: false, borderWidth: 0, borderDash: undefined, pointRadius: 0, tension: undefined }
             : ds
         );
         charts[id] = new Chart($(id), { type: chartType, plugins: [makeZeroPlugin()], data: { labels: dates, datasets: newDatasets }, options: useOpts || opts });

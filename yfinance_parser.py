@@ -77,7 +77,6 @@ _SEC_BALANCE_TAGS = {
     'intangibles_other': ['IntangibleAssetsNetExcludingGoodwill'],
     'long_term_debt': ['LongTermDebtNoncurrent', 'LongTermDebt'],
     'retained_earnings': ['RetainedEarningsAccumulatedDeficit'],
-    'shares_outstanding': ['CommonStockSharesOutstanding', 'CommonStockSharesIssued'],
 }
 _SEC_CASHFLOW_TAGS = {
     'ocf': [
@@ -353,6 +352,8 @@ def parse_edgar_us(ticker_symbol: str) -> tuple[dict, dict, dict, list[str]] | N
     inc_data = _align(_SEC_INCOME_TAGS)
     inc_data.update(_align(_SEC_EPS_TAGS, unit='USD/shares'))
     bs_data = _align(_SEC_BALANCE_TAGS)
+    # 株数は 'shares' 単位で別途取得（USD unitと混在させない）
+    bs_data.update(_align({'shares_outstanding': ['CommonStockSharesOutstanding', 'CommonStockSharesIssued']}, unit='shares'))
     cf_data = _align(_SEC_CASHFLOW_TAGS)
 
     # CapEx の符号を yfinance 互換に（負値）
